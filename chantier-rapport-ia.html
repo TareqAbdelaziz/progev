@@ -611,16 +611,18 @@ RISQUES : ${data.risques}
 Rédige un rapport officiel en 12 sections : 1.EN-TÊTE 2.RÉSUMÉ EXÉCUTIF 3.AVANCEMENT & PLANNING 4.ACTIVITÉS DU JOUR 5.RESSOURCES 6.APPROVISIONNEMENT 7.HSE 8.QUALITÉ 9.PROBLÈMES & ACTIONS 10.PRÉVISIONS J+1 11.RISQUES 12.DÉCISIONS. Ton factuel, termes HT, alertes préfixées ⚠️.`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/api/generate-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify({ prompt })
     });
+
+    if (!response.ok) {
+      throw new Error(`Erreur serveur: ${response.status}`);
+    }
+
     const result = await response.json();
-    const text = result.content?.map(c => c.text || '').join('') || 'Erreur génération.';
+    const text = result.text || 'Erreur lors de la génération.';
 
     document.getElementById('report-text').textContent = text;
     document.getElementById('output-meta').textContent = `${data.nom_chantier} · ${data.date} · ${data.avancement_reel}`;
