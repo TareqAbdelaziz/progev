@@ -1,7 +1,5 @@
 // api/generate-report.js
-export const config = { api: { bodyParser: true } };
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -12,14 +10,8 @@ export default async function handler(req, res) {
   const CLAUDE_KEY = process.env.CLAUDE_API_KEY;
   if (!CLAUDE_KEY) return res.status(500).json({ error: 'Clé API manquante dans Vercel' });
 
-  let prompt;
-  try {
-    prompt = typeof req.body === 'string' ? JSON.parse(req.body).prompt : req.body?.prompt;
-  } catch(e) {
-    return res.status(400).json({ error: 'Body invalide', raw: String(req.body) });
-  }
-
-  if (!prompt) return res.status(400).json({ error: 'Prompt vide', body: req.body });
+  const prompt = req.body && req.body.prompt;
+  if (!prompt) return res.status(400).json({ error: 'Prompt vide', recu: JSON.stringify(req.body) });
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
