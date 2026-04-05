@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SiteSync IA — Rapport de chantier</title>
+<title>Progev — Rapport de chantier</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   :root {
     --bg: #0a0e0a;
     --bg2: #111711;
@@ -271,7 +271,21 @@
       <div class="logo-mark">
         <svg viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" fill="#0a0e0a"/><rect x="10" y="2" width="6" height="6" rx="1.5" fill="#0a0e0a"/><rect x="2" y="10" width="6" height="6" rx="1.5" fill="#0a0e0a"/><circle cx="13" cy="13" r="3" fill="#0a0e0a"/></svg>
       </div>
-      <span class="logo-name">Site<span>Sync</span> IA</span>
+      <span class="logo-name">Pro<span>gev</span></span>
+    </div>
+
+    <!-- Sélecteur chantier -->
+    <select id="chantier-select" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 12px;outline:none;max-width:220px;"></select>
+
+    <!-- User info + logout -->
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="text-align:right;">
+        <div id="user-name" style="font-size:13px;font-weight:600;color:var(--text);">—</div>
+        <div id="org-name" style="font-size:11px;color:var(--text3);">—</div>
+      </div>
+      <button onclick="logout()" style="background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;padding:6px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;">
+        Déconnexion
+      </button>
     </div>
     <span class="badge">Module 1 · Rapport journalier</span>
   </header>
@@ -491,22 +505,69 @@ Cordialement,</textarea>
 <div class="toast" id="toast"></div>
 
 <script>
-// Set today's date
+const SUPA_URL = 'https://kytoohxfditlhmvzehgj.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5dG9vaHhmZGl0bGhtdnplaGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTk2MzEsImV4cCI6MjA5MDk3NTYzMX0.oMTiAaoYlzY0cryj2pBM9v4si4hHiE0QFSlhiSTRAFA';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let currentUser = null;
+let currentChantier = null;
+let mesChantiers = [];
+
 document.getElementById('date_rapport').valueAsDate = new Date();
 
-function toggleBtn(btn) {
-  btn.classList.toggle('active');
+// ── AUTH INIT ─────────────────────────────────────────
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; return; }
+  const { data: profile } = await sb.from('utilisateurs')
+    .select('*, organisations(*)')
+    .eq('id', session.user.id).single();
+  currentUser = profile;
+  if (profile) {
+    document.getElementById('user-name').textContent = profile.nom || session.user.email;
+    document.getElementById('org-name').textContent = profile.organisations?.nom || '';
+    await loadChantiers(profile.organisation_id);
+  }
+})();
+
+async function loadChantiers(orgId) {
+  const { data } = await sb.from('chantiers')
+    .select('*').eq('organisation_id', orgId).eq('statut', 'en_cours')
+    .order('created_at', { ascending: false });
+  mesChantiers = data || [];
+  if (mesChantiers.length === 0) {
+    const { data: newC } = await sb.from('chantiers').insert({
+      organisation_id: orgId, nom: 'Mon premier chantier',
+      reference: 'CHANTIER-001', duree_jours: 180, statut: 'en_cours'
+    }).select().single();
+    if (newC) mesChantiers = [newC];
+  }
+  const sel = document.getElementById('chantier-select');
+  sel.innerHTML = mesChantiers.map(c => `<option value="${c.id}">${c.nom}</option>`).join('');
+  if (mesChantiers.length > 0) {
+    currentChantier = mesChantiers[0];
+    document.getElementById('nom_chantier').value = currentChantier.nom;
+  }
+  sel.addEventListener('change', () => {
+    currentChantier = mesChantiers.find(c => c.id === sel.value);
+    if (currentChantier) document.getElementById('nom_chantier').value = currentChantier.nom;
+  });
 }
 
+async function logout() {
+  await sb.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+function toggleBtn(btn) { btn.classList.toggle('active'); }
+
 function getActiveHSE() {
-  const btns = document.querySelectorAll('.toggle-btn.active');
-  return Array.from(btns).map(b => b.textContent.trim());
+  return Array.from(document.querySelectorAll('.toggle-btn.active')).map(b => b.textContent.trim());
 }
 
 async function generateReport() {
   const btn = document.getElementById('genBtn');
-  btn.classList.add('loading');
-  btn.disabled = true;
+  btn.classList.add('loading'); btn.disabled = true;
 
   const data = {
     nom_chantier: document.getElementById('nom_chantier').value || 'Non renseigné',
@@ -534,150 +595,82 @@ async function generateReport() {
     ? (parseInt(data.avancement_reel) - parseInt(data.avancement_prevu)) + '%'
     : 'Non calculable';
 
-  const prompt = `Tu es un assistant spécialisé dans la gestion de chantiers de lignes électriques haute tension (60kV/HTB). 
+  const prompt = `Tu es un assistant spécialisé dans la gestion de chantiers de lignes électriques haute tension (60kV/HTB).
 Tu dois rédiger un rapport journalier officiel, professionnel et structuré, destiné à la Direction et au Maître d'Ouvrage.
-
-Voici les données saisies par le chef de projet :
-
-IDENTIFICATION :
-- Chantier : ${data.nom_chantier}
-- Date : ${data.date}
-- Chef de projet : ${data.chef_projet}
-- Chef de chantier : ${data.chef_chantier}
-
-AVANCEMENT :
-- Avancement réel : ${data.avancement_reel}
-- Avancement prévu (planning) : ${data.avancement_prevu}
-- Écart planning : ${ecart}
-- Effectif présent : ${data.effectif} personnes
-- Engins actifs : ${data.engins}
-- Météo : ${data.meteo}
-
-TRAVAUX :
-- Réalisés aujourd'hui : ${data.travaux_realises}
-- Prévus demain : ${data.travaux_prevus}
-
-APPROVISIONNEMENT :
-- Livraisons reçues : ${data.livraisons_recues}
-- En attente : ${data.livraisons_attente}
-
-HSE :
-- Événements : ${data.hse_evenements}
-- Détails : ${data.hse_details}
-
-QUALITÉ & PROBLÈMES :
-- Non-conformités : ${data.qualite}
-- Blocages : ${data.problemes}
-
-DÉCISIONS & RISQUES :
-- Décisions prises : ${data.decisions}
-- Risques anticipés : ${data.risques}
-
-Rédige un rapport journalier complet avec ces sections :
-1. EN-TÊTE (chantier, date, responsables)
-2. RÉSUMÉ EXÉCUTIF (3-4 lignes synthétiques pour la direction)
-3. AVANCEMENT & PLANNING (analyse de l'écart si existant)
-4. ACTIVITÉS DU JOUR
-5. RESSOURCES MOBILISÉES
-6. APPROVISIONNEMENT & LIVRAISONS
-7. HSE — SÉCURITÉ & ENVIRONNEMENT
-8. QUALITÉ & CONTRÔLE
-9. PROBLÈMES & ACTIONS CORRECTIVES
-10. PRÉVISIONS J+1
-11. POINTS DE VIGILANCE & RISQUES
-12. DÉCISIONS & ENGAGEMENTS
-
-Le ton doit être professionnel, factuel, direct. Utilise des termes techniques du domaine électrique HT quand pertinent. Mets en valeur les alertes (retard planning, incidents HSE) avec le préfixe ⚠️. Si tout va bien sur un point, écris "RAS" ou une phrase courte positive. Le rapport doit être directement utilisable sans modification.`;
+Voici les données :
+IDENTIFICATION : Chantier : ${data.nom_chantier} · Date : ${data.date} · Chef projet : ${data.chef_projet} · Chef chantier : ${data.chef_chantier}
+AVANCEMENT : Réel : ${data.avancement_reel} · Prévu : ${data.avancement_prevu} · Écart : ${ecart} · Effectif : ${data.effectif} · Engins : ${data.engins} · Météo : ${data.meteo}
+TRAVAUX : Réalisés : ${data.travaux_realises} · Prévus demain : ${data.travaux_prevus}
+APPROVISIONNEMENT : Reçu : ${data.livraisons_recues} · En attente : ${data.livraisons_attente}
+HSE : ${data.hse_evenements} — ${data.hse_details}
+QUALITÉ : ${data.qualite}
+PROBLÈMES : ${data.problemes}
+DÉCISIONS : ${data.decisions}
+RISQUES : ${data.risques}
+Rédige un rapport officiel en 12 sections : 1.EN-TÊTE 2.RÉSUMÉ EXÉCUTIF 3.AVANCEMENT & PLANNING 4.ACTIVITÉS DU JOUR 5.RESSOURCES 6.APPROVISIONNEMENT 7.HSE 8.QUALITÉ 9.PROBLÈMES & ACTIONS 10.PRÉVISIONS J+1 11.RISQUES 12.DÉCISIONS. Ton factuel, termes HT, alertes préfixées ⚠️.`;
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }]
+        model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
       })
     });
-
     const result = await response.json();
-    const text = result.content?.map(c => c.text || '').join('') || 'Erreur lors de la génération.';
+    const text = result.content?.map(c => c.text || '').join('') || 'Erreur génération.';
 
     document.getElementById('report-text').textContent = text;
-    document.getElementById('output-meta').textContent = `${data.nom_chantier} · ${data.date} · ${data.avancement_reel} réalisé`;
+    document.getElementById('output-meta').textContent = `${data.nom_chantier} · ${data.date} · ${data.avancement_reel}`;
 
-    // ── Sauvegarde localStorage ──
-    saveRapport(data, text);
+    await saveRapport(data, text);
 
-    // Alerts
     const alerts = [];
-    const avReal = parseInt(data.avancement_reel);
-    const avPrevu = parseInt(data.avancement_prevu);
+    const avReal = parseInt(data.avancement_reel), avPrevu = parseInt(data.avancement_prevu);
     if (!isNaN(avReal) && !isNaN(avPrevu) && avReal < avPrevu - 5)
-      alerts.push({ type:'danger', msg:`Retard planning : avancement réel (${data.avancement_reel}) inférieur au prévu (${data.avancement_prevu})` });
+      alerts.push({ type:'danger', msg:`Retard planning : réel ${data.avancement_reel} < prévu ${data.avancement_prevu}` });
     if (data.hse_evenements.includes('Accident') || data.hse_evenements.includes('Presqu'))
-      alerts.push({ type:'danger', msg:'Incident HSE signalé — vérifier actions correctives' });
+      alerts.push({ type:'danger', msg:'Incident HSE — vérifier actions correctives' });
     if (data.livraisons_attente && data.livraisons_attente !== 'Aucune')
-      alerts.push({ type:'warn', msg:'Livraisons en attente — risque de blocage à surveiller' });
+      alerts.push({ type:'warn', msg:'Livraisons en attente — risque blocage' });
     if (data.meteo === 'Vent fort' || data.meteo === 'Orage')
-      alerts.push({ type:'warn', msg:`Conditions météo défavorables (${data.meteo}) — vérifier arrêt travaux aériens` });
+      alerts.push({ type:'warn', msg:`Météo défavorable (${data.meteo}) — vérifier arrêt travaux aériens` });
 
     const strip = document.getElementById('alerts-strip');
-    if (alerts.length > 0) {
-      strip.innerHTML = alerts.map(a =>
-        `<div class="alert-item ${a.type}"><span class="alert-dot"></span>${a.msg}</div>`
-      ).join('');
-      strip.style.display = 'block';
-    } else {
-      strip.style.display = 'none';
-    }
+    strip.innerHTML = alerts.map(a => `<div class="alert-item ${a.type}"><span class="alert-dot"></span>${a.msg}</div>`).join('');
+    strip.style.display = alerts.length ? 'block' : 'none';
 
     const out = document.getElementById('output-section');
     out.classList.add('visible');
     out.scrollIntoView({ behavior:'smooth', block:'start' });
 
   } catch(e) {
-    document.getElementById('report-text').textContent = 'Erreur de connexion à l\'API. Vérifiez votre connexion et réessayez.';
+    document.getElementById('report-text').textContent = 'Erreur connexion API.';
     document.getElementById('output-section').classList.add('visible');
   }
-
-  btn.classList.remove('loading');
-  btn.disabled = false;
+  btn.classList.remove('loading'); btn.disabled = false;
 }
 
-// ── SAUVEGARDE LOCALSTORAGE ──────────────────────────
-function saveRapport(data, texteGenere) {
-  const KEY = 'sitesync_rapports';
-  const existing = JSON.parse(localStorage.getItem(KEY) || '[]');
-
+async function saveRapport(data, texteGenere) {
+  if (!currentUser || !currentChantier) { showToast('Non connecté — rapport non sauvegardé', 'error'); return; }
   const rapport = {
-    id: Date.now(),
-    timestamp: new Date().toISOString(),
-    nom_chantier: data.nom_chantier,
-    date: data.date,
-    chef_projet: data.chef_projet,
-    chef_chantier: data.chef_chantier,
-    avancement_reel: parseInt(data.avancement_reel),
+    chantier_id: currentChantier.id, auteur_id: currentUser.id,
+    date_rapport: data.date || new Date().toISOString().split('T')[0],
+    avancement_reel: parseInt(data.avancement_reel) || 0,
     avancement_prevu: parseInt(data.avancement_prevu) || null,
-    effectif: parseInt(data.effectif) || 0,
-    engins: parseInt(data.engins) || 0,
-    meteo: data.meteo,
-    hse_evenements: data.hse_evenements,
-    hse_incident: data.hse_evenements.includes('Accident') || data.hse_evenements.includes('Presqu'),
+    effectif: parseInt(data.effectif) || 0, engins: parseInt(data.engins) || 0,
+    meteo: data.meteo, travaux_realises: data.travaux_realises, travaux_prevus: data.travaux_prevus,
+    livraisons_recues: data.livraisons_recues,
     livraisons_attente: data.livraisons_attente !== 'Aucune' ? data.livraisons_attente : '',
-    problemes: data.problemes,
-    risques: data.risques,
-    texte_rapport: texteGenere,
+    hse_evenements: data.hse_evenements, hse_details: data.hse_details,
+    hse_incident: data.hse_evenements?.includes('Accident') || data.hse_evenements?.includes('Presqu') || false,
+    qualite: data.qualite, problemes: data.problemes, decisions: data.decisions,
+    risques: data.risques, texte_rapport: texteGenere,
   };
-
-  // Évite les doublons sur la même date + chantier
-  const filtered = existing.filter(r => !(r.date === rapport.date && r.nom_chantier === rapport.nom_chantier));
-  filtered.push(rapport);
-
-  // Garde les 90 derniers rapports max
-  const trimmed = filtered.slice(-90);
-  localStorage.setItem(KEY, JSON.stringify(trimmed));
-  showToast('Rapport sauvegardé — tableau de bord mis à jour');
+  const { error } = await sb.from('rapports').upsert(rapport, { onConflict: 'chantier_id,date_rapport' });
+  if (error) { console.error(error); showToast('Erreur sauvegarde Supabase', 'error'); }
+  else showToast('Rapport sauvegardé dans Supabase ✓');
 }
 
 function copyReport() {
@@ -691,158 +684,87 @@ function copyReport() {
 
 function showToast(msg, type='success') {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = `toast ${type} show`;
+  t.textContent = msg; t.className = `toast ${type} show`;
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
 function exportPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-
   const reportText = document.getElementById('report-text').textContent;
   const nomChantier = document.getElementById('nom_chantier').value || 'Chantier';
   const dateRapport = document.getElementById('date_rapport').value || new Date().toISOString().split('T')[0];
   const chefProjet = document.getElementById('chef_projet').value || '';
-
   const W = 210, margin = 18, contentW = W - margin * 2;
-
-  // Header band
-  doc.setFillColor(10, 14, 10);
-  doc.rect(0, 0, W, 28, 'F');
-
-  // Logo accent bar
-  doc.setFillColor(77, 255, 124);
-  doc.rect(0, 0, 5, 28, 'F');
-
-  doc.setTextColor(77, 255, 124);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('SiteSync IA', 12, 12);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(143, 168, 143);
+  doc.setFillColor(10,14,10); doc.rect(0,0,W,28,'F');
+  doc.setFillColor(77,255,124); doc.rect(0,0,5,28,'F');
+  doc.setTextColor(77,255,124); doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('Progev', 12, 12);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(143,168,143);
   doc.text('Rapport journalier de chantier', 12, 19);
-  doc.text(dateRapport, W - margin, 19, { align:'right' });
-
-  // Title section
-  doc.setFillColor(17, 23, 17);
-  doc.rect(0, 28, W, 22, 'F');
-  doc.setTextColor(232, 240, 232);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  doc.text(dateRapport, W-margin, 19, {align:'right'});
+  doc.setFillColor(17,23,17); doc.rect(0,28,W,22,'F');
+  doc.setTextColor(232,240,232); doc.setFont('helvetica','bold'); doc.setFontSize(13);
   doc.text(nomChantier, margin, 40);
-  if (chefProjet) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(143, 168, 143);
-    doc.text(`Chef de projet : ${chefProjet}`, margin, 47);
-  }
-
-  // Avancement pill
+  if (chefProjet) { doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(143,168,143); doc.text(`Chef de projet : ${chefProjet}`, margin, 47); }
   const av = document.getElementById('avancement').value;
-  doc.setFillColor(77, 255, 124);
-  doc.roundedRect(W - margin - 28, 33, 28, 10, 3, 3, 'F');
-  doc.setTextColor(10, 14, 10);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text(`${av}%`, W - margin - 14, 40, { align:'center' });
-
-  // Report body
+  doc.setFillColor(77,255,124); doc.roundedRect(W-margin-28,33,28,10,3,3,'F');
+  doc.setTextColor(10,14,10); doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text(`${av}%`, W-margin-14, 40, {align:'center'});
   let y = 60;
-  doc.setTextColor(50, 50, 50);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-
+  doc.setTextColor(50,50,50); doc.setFont('helvetica','normal'); doc.setFontSize(9);
   const lines = doc.splitTextToSize(reportText, contentW);
-
   lines.forEach(line => {
     if (y > 272) {
       doc.addPage();
-      // Mini header on continuation pages
-      doc.setFillColor(10, 14, 10);
-      doc.rect(0, 0, W, 12, 'F');
-      doc.setFillColor(77, 255, 124);
-      doc.rect(0, 0, 5, 12, 'F');
-      doc.setTextColor(143, 168, 143);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
+      doc.setFillColor(10,14,10); doc.rect(0,0,W,12,'F');
+      doc.setFillColor(77,255,124); doc.rect(0,0,5,12,'F');
+      doc.setTextColor(143,168,143); doc.setFontSize(7);
       doc.text(`${nomChantier} · ${dateRapport} · Suite`, 12, 8);
-      y = 22;
-      doc.setTextColor(50, 50, 50);
-      doc.setFontSize(9);
+      y = 22; doc.setTextColor(50,50,50); doc.setFontSize(9);
     }
-
-    // Section headers (lines starting with digit + dot, or ALL CAPS-ish)
-    const isSectionHeader = /^\d+\.\s+[A-ZÉÀÈÊÎ]/.test(line) || /^[A-ZÉÀÈÊÎ\s—&]{6,}$/.test(line.trim());
+    const isSectionHeader = /^\d+\.\s+[A-ZÉÀÈÊÎ]/.test(line);
     const isAlert = line.includes('⚠️') || line.startsWith('⚠');
-
     if (isSectionHeader) {
       y += 3;
-      doc.setFillColor(240, 248, 240);
-      doc.rect(margin - 3, y - 5, contentW + 6, 8, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(15, 110, 86);
+      doc.setFillColor(240,248,240); doc.rect(margin-3, y-5, contentW+6, 8,'F');
+      doc.setFont('helvetica','bold'); doc.setTextColor(15,110,86);
       doc.text(line, margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      y += 6;
+      doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); y += 6;
     } else if (isAlert) {
-      doc.setFillColor(255, 245, 230);
-      doc.rect(margin - 3, y - 4.5, contentW + 6, 7, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(180, 90, 0);
+      doc.setFillColor(255,245,230); doc.rect(margin-3, y-4.5, contentW+6, 7,'F');
+      doc.setFont('helvetica','bold'); doc.setTextColor(180,90,0);
       doc.text(line.replace('⚠️','[!]').replace('⚠','[!]'), margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      y += 5.5;
-    } else if (line.trim() === '') {
-      y += 2.5;
-    } else {
-      doc.text(line, margin, y);
-      y += 5;
-    }
+      doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); y += 5.5;
+    } else if (line.trim() === '') { y += 2.5; }
+    else { doc.text(line, margin, y); y += 5; }
   });
-
-  // Footer on all pages
-  const totalPages = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFillColor(240, 245, 240);
-    doc.rect(0, 285, W, 12, 'F');
-    doc.setTextColor(143, 168, 143);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.text(`Généré par SiteSync IA · ${dateRapport}`, margin, 292);
-    doc.text(`Page ${i} / ${totalPages}`, W - margin, 292, { align:'right' });
+  const total = doc.internal.getNumberOfPages();
+  for (let i=1; i<=total; i++) {
+    doc.setPage(i); doc.setFillColor(240,245,240); doc.rect(0,285,W,12,'F');
+    doc.setTextColor(143,168,143); doc.setFont('helvetica','normal'); doc.setFontSize(7);
+    doc.text(`Généré par Progev · ${dateRapport}`, margin, 292);
+    doc.text(`Page ${i} / ${total}`, W-margin, 292, {align:'right'});
   }
-
-  const filename = `rapport-chantier-${nomChantier.replace(/\s+/g,'-').toLowerCase()}-${dateRapport}.pdf`;
+  const filename = `rapport-${nomChantier.replace(/\s+/g,'-').toLowerCase()}-${dateRapport}.pdf`;
   doc.save(filename);
-  showToast('PDF exporté avec succès');
+  showToast('PDF exporté ✓');
 }
 
 function printReport() {
   const text = document.getElementById('report-text').textContent;
-  const nomChantier = document.getElementById('nom_chantier').value || 'Chantier';
+  const nom = document.getElementById('nom_chantier').value || 'Chantier';
   const date = document.getElementById('date_rapport').value || '';
-  const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Rapport · ${nomChantier}</title>
-    <style>
-      body { font-family: Arial, sans-serif; font-size: 11px; line-height: 1.6; color: #1a1a1a; padding: 20mm; }
-      h1 { font-size: 16px; border-bottom: 2px solid #0f6e56; padding-bottom: 8px; color: #0f6e56; }
-      pre { white-space: pre-wrap; font-family: Arial, sans-serif; font-size: 11px; }
-      .meta { color: #666; font-size: 10px; margin-bottom: 16px; }
-      @media print { body { padding: 15mm; } }
-    </style></head><body>
-    <h1>Rapport journalier — ${nomChantier}</h1>
-    <div class="meta">Date : ${date} · Généré par SiteSync IA</div>
-    <pre>${text}</pre>
-    <script>window.onload=()=>{window.print();}<\/script>
-    </body></html>`);
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rapport · ${nom}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:11px;line-height:1.6;color:#1a1a1a;padding:20mm}
+  h1{font-size:16px;border-bottom:2px solid #0f6e56;padding-bottom:8px;color:#0f6e56;margin-bottom:16px}
+  pre{white-space:pre-wrap;font-family:Arial,sans-serif;font-size:11px}
+  @media print{body{padding:15mm}}</style></head><body>
+  <h1>Rapport journalier — ${nom}</h1>
+  <div style="color:#666;font-size:10px;margin-bottom:16px;">Date : ${date} · Généré par Progev</div>
+  <pre>${text}</pre>
+  <script>window.onload=()=>{window.print();}<\/script></body></html>`);
   win.document.close();
 }
 
@@ -852,25 +774,18 @@ function openEmailModal() {
   document.getElementById('email_subject').value = `Rapport journalier chantier — ${nom} — ${date}`;
   document.getElementById('emailModal').classList.add('open');
 }
-
-function closeEmailModal() {
-  document.getElementById('emailModal').classList.remove('open');
-}
+function closeEmailModal() { document.getElementById('emailModal').classList.remove('open'); }
 
 function sendEmail() {
   const to = document.getElementById('email_to').value.trim();
   const subject = document.getElementById('email_subject').value.trim();
   const intro = document.getElementById('email_intro').value.trim();
   const report = document.getElementById('report-text').textContent;
-
-  if (!to) { showToast('Renseignez au moins un destinataire', 'error'); return; }
-
-  const body = `${intro}\n\n${'─'.repeat(60)}\n\n${report}\n\n${'─'.repeat(60)}\n\nCe rapport a été généré automatiquement par SiteSync IA.`;
-  const mailtoLink = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-  window.location.href = mailtoLink;
+  if (!to) { showToast('Renseignez un destinataire', 'error'); return; }
+  const body = `${intro}\n\n${'─'.repeat(60)}\n\n${report}\n\n${'─'.repeat(60)}\n\nGénéré par Progev — progev.com`;
+  window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   closeEmailModal();
-  showToast('Client email ouvert avec le rapport');
+  showToast('Client email ouvert ✓');
 }
 </script>
 </body>
