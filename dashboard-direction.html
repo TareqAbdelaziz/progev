@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SiteSync IA — Tableau de bord Direction</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:    #f5f3ee;
+  --bg2:   #edeae3;
+  --bg3:   #e4e0d8;
+  --card:  #ffffff;
+  --text:  #1a1a14;
+  --text2: #6b6b58;
+  --text3: #a8a890;
+  --accent:#1a3a2a;
+  --green: #2d6a4f;
+  --green-light: #d8f3dc;
+  --amber: #b5621e;
+  --amber-light: #fdebd0;
+  --red:   #8b1a1a;
+  --red-light: #fde8e8;
+  --blue:  #1a3050;
+  --blue-light: #dce8f5;
+  --border:#dedad2;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Subtle grain */
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+
+/* Layout */
+.layout { display:grid; grid-template-columns:220px 1fr; min-height:100vh; }
+
+/* Sidebar */
+.sidebar {
+  background: var(--accent);
+  padding: 0;
+  display:flex; flex-direction:column;
+  position: sticky; top:0; height:100vh; overflow-y:auto;
+}
+
+.sidebar-header {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-logo { display:flex; align-items:center; gap:9px; margin-bottom:20px; }
+.logo-sq {
+  width:30px; height:30px; background:#4dff7c; border-radius:6px;
+  display:grid; place-items:center;
+}
+.logo-sq svg { width:16px; height:16px; }
+.logo-txt { font-family:'Cabinet Grotesk',sans-serif; font-weight:800; font-size:15px; color:#fff; letter-spacing:-0.3px; }
+.logo-txt span { color:#4dff7c; }
+
+.chantier-selector {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius:8px; padding:10px 12px;
+  cursor:pointer;
+}
+.chantier-selector .label { font-size:10px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+.chantier-selector .name { font-weight:700; font-size:13px; color:#fff; }
+.chantier-selector .meta { font-size:11px; color:rgba(255,255,255,0.45); margin-top:2px; }
+
+.sidebar-nav { padding:16px 12px; flex:1; }
+.nav-section { margin-bottom:20px; }
+.nav-section-title { font-size:10px; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:1.2px; padding:0 8px; margin-bottom:6px; }
+.nav-item {
+  display:flex; align-items:center; gap:9px;
+  padding:9px 10px; border-radius:8px; cursor:pointer;
+  color:rgba(255,255,255,0.55); font-size:13px; font-weight:500;
+  transition:all 0.15s; margin-bottom:2px;
+}
+.nav-item:hover { background:rgba(255,255,255,0.07); color:#fff; }
+.nav-item.active { background:rgba(77,255,124,0.15); color:#4dff7c; }
+.nav-item svg { width:16px; height:16px; flex-shrink:0; }
+
+.sidebar-footer { padding:16px 12px 20px; border-top:1px solid rgba(255,255,255,0.07); }
+.status-live {
+  display:flex; align-items:center; gap:7px;
+  font-size:11px; color:rgba(255,255,255,0.4); padding:0 8px;
+}
+.live-dot { width:6px; height:6px; background:#4dff7c; border-radius:50%; animation:pulse 2s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* Main content */
+.main { overflow-y:auto; }
+
+/* Top bar */
+.topbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 60px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:10;
+}
+.topbar-left { display:flex; flex-direction:column; gap:2px; }
+.topbar-title { font-weight:800; font-size:16px; letter-spacing:-0.3px; }
+.topbar-sub { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+.date-badge {
+  font-family:'DM Mono',monospace; font-size:11px;
+  background:var(--bg2); color:var(--text2);
+  padding:5px 10px; border-radius:6px; border:1px solid var(--border);
+}
+.btn-rapport {
+  padding:7px 14px; border-radius:8px; font-size:12px; font-weight:700;
+  background:var(--accent); color:#fff; border:none; cursor:pointer;
+  font-family:'Cabinet Grotesk',sans-serif; transition:all 0.15s;
+  display:flex; align-items:center; gap:6px;
+}
+.btn-rapport:hover { background:var(--green); }
+.btn-rapport svg { width:13px; height:13px; }
+
+/* Content area */
+.content { padding:28px 32px 48px; }
+
+/* KPI row */
+.kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+
+.kpi-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:18px 20px;
+  box-shadow:var(--shadow);
+  position:relative; overflow:hidden;
+  animation: fadeUp 0.4s ease both;
+}
+.kpi-card:nth-child(1){animation-delay:.05s}
+.kpi-card:nth-child(2){animation-delay:.1s}
+.kpi-card:nth-child(3){animation-delay:.15s}
+.kpi-card:nth-child(4){animation-delay:.2s}
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.kpi-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:14px 14px 0 0;
+}
+.kpi-card.green::before  { background: var(--green); }
+.kpi-card.amber::before  { background: var(--amber); }
+.kpi-card.red::before    { background: var(--red); }
+.kpi-card.blue::before   { background: var(--blue); }
+
+.kpi-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.kpi-label { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.8px; font-weight:500; }
+.kpi-icon { width:32px; height:32px; border-radius:8px; display:grid; place-items:center; }
+.kpi-icon svg { width:16px; height:16px; }
+.kpi-card.green .kpi-icon { background:var(--green-light); color:var(--green); }
+.kpi-card.amber .kpi-icon { background:var(--amber-light); color:var(--amber); }
+.kpi-card.red   .kpi-icon { background:var(--red-light);   color:var(--red); }
+.kpi-card.blue  .kpi-icon { background:var(--blue-light);  color:var(--blue); }
+
+.kpi-value { font-family:'Instrument Serif',serif; font-size:36px; line-height:1; letter-spacing:-1px; margin-bottom:6px; }
+.kpi-card.green .kpi-value { color:var(--green); }
+.kpi-card.amber .kpi-value { color:var(--amber); }
+.kpi-card.red   .kpi-value { color:var(--red); }
+.kpi-card.blue  .kpi-value { color:var(--blue); }
+
+.kpi-trend { font-size:12px; display:flex; align-items:center; gap:4px; }
+.trend-up   { color:var(--green); }
+.trend-down { color:var(--red); }
+.trend-flat { color:var(--text3); }
+
+/* Grid 2 cols */
+.grid-main { display:grid; grid-template-columns:1fr 340px; gap:18px; margin-bottom:18px; }
+.grid-3col  { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; margin-bottom:18px; }
+
+/* Chart cards */
+.chart-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:22px 24px;
+  box-shadow:var(--shadow);
+  animation: fadeUp 0.4s ease both;
+}
+.chart-card:nth-child(1){animation-delay:.25s}
+.chart-card:nth-child(2){animation-delay:.3s}
+
+.card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.card-title { font-weight:800; font-size:14px; letter-spacing:-0.2px; }
+.card-sub { font-size:11px; color:var(--text3); margin-top:2px; }
+.card-badge {
+  font-family:'DM Mono',monospace; font-size:10px;
+  padding:3px 8px; border-radius:20px; font-weight:500;
+}
+.badge-green { background:var(--green-light); color:var(--green); }
+.badge-amber { background:var(--amber-light); color:var(--amber); }
+.badge-red   { background:var(--red-light);   color:var(--red); }
+.badge-blue  { background:var(--blue-light);  color:var(--blue); }
+
+canvas { max-height: 220px; }
+
+/* Alerts panel */
+.alerts-list { display:flex; flex-direction:column; gap:8px; }
+.alert-item {
+  padding:12px 14px; border-radius:10px; font-size:12px; line-height:1.4;
+  display:flex; gap:10px; align-items:flex-start;
+}
+.alert-item.danger { background:var(--red-light); border:1px solid rgba(139,26,26,0.15); }
+.alert-item.warn   { background:var(--amber-light); border:1px solid rgba(181,98,30,0.15); }
+.alert-item.info   { background:var(--blue-light); border:1px solid rgba(26,48,80,0.12); }
+.alert-item.ok     { background:var(--green-light); border:1px solid rgba(45,106,79,0.15); }
+.alert-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+.alert-item.danger .alert-dot { background:var(--red); }
+.alert-item.warn   .alert-dot { background:var(--amber); }
+.alert-item.info   .alert-dot { background:var(--blue); }
+.alert-item.ok     .alert-dot { background:var(--green); }
+.alert-title { font-weight:700; margin-bottom:2px; }
+.alert-item.danger .alert-title { color:var(--red); }
+.alert-item.warn   .alert-title { color:var(--amber); }
+.alert-item.info   .alert-title { color:var(--blue); }
+.alert-item.ok     .alert-title { color:var(--green); }
+.alert-desc { color:var(--text2); }
+
+/* Progress table */
+.prog-table { width:100%; border-collapse:collapse; }
+.prog-table th { font-size:10px; text-transform:uppercase; letter-spacing:0.8px; color:var(--text3); font-weight:600; padding:0 0 10px; text-align:left; }
+.prog-table td { padding:8px 0; border-top:1px solid var(--border); vertical-align:middle; }
+.prog-table td:last-child { text-align:right; }
+.prog-bar-wrap { width:100%; background:var(--bg2); border-radius:4px; height:6px; overflow:hidden; }
+.prog-bar { height:6px; border-radius:4px; transition:width 1s ease; }
+.prog-name { font-weight:600; font-size:13px; margin-bottom:2px; }
+.prog-sub { font-size:11px; color:var(--text3); }
+.prog-pct { font-family:'DM Mono',monospace; font-size:13px; font-weight:500; }
+
+/* HSE counters */
+.hse-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.hse-item {
+  background:var(--bg2); border-radius:10px; padding:14px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.hse-num { font-family:'Instrument Serif',serif; font-size:28px; line-height:1; }
+.hse-lbl { font-size:11px; color:var(--text3); }
+.hse-item.danger .hse-num { color:var(--red); }
+.hse-item.warn   .hse-num { color:var(--amber); }
+.hse-item.ok     .hse-num { color:var(--green); }
+.hse-item.blue   .hse-num { color:var(--blue); }
+
+/* Team list */
+.team-list { display:flex; flex-direction:column; gap:8px; }
+.team-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  background:var(--bg2);
+}
+.team-avatar {
+  width:32px; height:32px; border-radius:8px;
+  background:var(--accent); color:#fff;
+  font-weight:800; font-size:12px;
+  display:grid; place-items:center; flex-shrink:0;
+}
+.team-name { font-weight:700; font-size:13px; }
+.team-role { font-size:11px; color:var(--text3); }
+.team-status {
+  margin-left:auto; font-size:10px; font-weight:600; padding:3px 8px; border-radius:20px;
+}
+.status-present { background:var(--green-light); color:var(--green); }
+.status-absent  { background:var(--red-light);   color:var(--red); }
+.status-mission { background:var(--blue-light);  color:var(--blue); }
+
+/* Livraisons */
+.livraison-list { display:flex; flex-direction:column; gap:7px; }
+.livraison-item {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 12px; border-radius:9px; font-size:12px;
+  border:1px solid var(--border); background:var(--card);
+}
+.liv-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.liv-received  { background:var(--green); }
+.liv-pending   { background:var(--amber); }
+.liv-late      { background:var(--red); }
+.liv-name { flex:1; font-weight:600; }
+.liv-date { font-family:'DM Mono',monospace; font-size:10px; color:var(--text3); }
+
+/* Historique */
+.hist-list { display:flex; flex-direction:column; gap:6px; }
+.hist-item {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 12px; border-radius:9px; font-size:12px;
+  border:1px solid var(--border); background:var(--bg);
+  cursor:pointer; transition:all 0.12s;
+}
+.hist-item:hover { background:var(--bg2); border-color:var(--green); }
+.hist-icon { width:22px; height:22px; border-radius:6px; display:grid; place-items:center; font-size:11px; font-weight:700; flex-shrink:0; }
+.hist-icon.ok     { background:var(--green-light); color:var(--green); }
+.hist-icon.warn   { background:var(--amber-light); color:var(--amber); }
+.hist-icon.danger { background:var(--red-light);   color:var(--red); }
+.hist-info { flex:1; }
+.hist-date { font-weight:700; font-family:'DM Mono',monospace; font-size:11px; }
+.hist-meta { color:var(--text3); font-size:11px; margin-top:1px; }
+.hist-av   { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; }
+
+/* Responsive */
+@media(max-width:1100px) {
+  .kpi-row { grid-template-columns:1fr 1fr; }
+  .grid-main { grid-template-columns:1fr; }
+  .grid-3col { grid-template-columns:1fr 1fr; }
+}
+@media(max-width:768px) {
+  .layout { grid-template-columns:1fr; }
+  .sidebar { display:none; }
+  .content { padding:20px 16px 40px; }
+  .topbar { padding:0 16px; }
+  .kpi-row { grid-template-columns:1fr 1fr; }
+  .grid-3col { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <div class="logo-sq">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="#0a0e0a"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="#0a0e0a"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="#0a0e0a"/><circle cx="12" cy="12" r="3" fill="#0a0e0a"/></svg>
+      </div>
+      <span class="logo-txt">Site<span>Sync</span> IA</span>
+    </div>
+    <div class="chantier-selector">
+      <div class="label">Chantier actif</div>
+      <div class="name">Ligne 60kV Berrechid–Settat</div>
+      <div class="meta">Lot 3 · Contrat C-2024-047</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-title">Tableau de bord</div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3"/></svg>
+        Vue générale
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none"><polyline points="1,12 5,6 9,9 13,3 15,5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Avancement
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M8 1v6l4 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="9" r="6" stroke="currentColor" stroke-width="1.3"/></svg>
+        Planning
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Modules</div>
+      <div class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Rapports journaliers
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z" stroke="currentColor" stroke-width="1.3"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        HSE & sécurité
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 3V2M11 3V2M2 7h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Livraisons
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3" stroke="currentColor" stroke-width="1.3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Équipe terrain
+      </div>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="status-live">
+      <span class="live-dot"></span>
+      Données du 04 avril 2026
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title">Vue direction — Ligne 60kV Berrechid–Settat</div>
+      <div class="topbar-sub">Lot 3 · Semaine 14 · Jour J+112 / J+180</div>
+    </div>
+    <div class="topbar-right">
+      <span class="date-badge">Dim. 06 avr. 2026</span>
+      <button class="btn-rapport" onclick="window.open('chantier-rapport-ia.html')">
+        <svg viewBox="0 0 13 13" fill="none"><path d="M2 1h7l3 3v8H2V1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M8 1v3h3" stroke="currentColor" stroke-width="1.2"/></svg>
+        Nouveau rapport
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Demo banner -->
+    <div id="demo-banner" style="display:none;align-items:center;gap:10px;background:#fdebd0;border:1px solid rgba(181,98,30,0.25);border-radius:10px;padding:10px 16px;margin-bottom:20px;font-size:13px;color:#7a4010;">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2L1 13h14L8 2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7v3M8 11.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      <span><strong>Mode démo</strong> — Aucun rapport réel trouvé. Données simulées affichées. <a href="chantier-rapport-ia.html" style="color:#b5621e;font-weight:700;">Créer un rapport →</a></span>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi-card green">
+        <div class="kpi-top">
+          <span class="kpi-label">Avancement réel</span>
+          <div class="kpi-icon"><svg viewBox="0 0 16 16" fill="none"><polyline points="1,12 5,6 9,9 13,3 15,5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="kpi-value" id="kpi-av-val">—</div>
+        <div class="kpi-trend" id="kpi-trend-av">Chargement...</div>
+      </div>
+
+      <div class="kpi-card amber">
+        <div class="kpi-top">
+          <span class="kpi-label">Jours restants</span>
+          <div class="kpi-icon"><svg viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 3V2M11 3V2M2 7h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+        </div>
+        <div class="kpi-value" id="kpi-jr-val">—</div>
+        <div class="kpi-trend trend-flat">sur 180 jours planifiés</div>
+      </div>
+
+      <div class="kpi-card red">
+        <div class="kpi-top">
+          <span class="kpi-label">Alertes actives</span>
+          <div class="kpi-icon"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2L1 13h14L8 2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7v3M8 11.5v.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+        </div>
+        <div class="kpi-value" id="kpi-alerte-val">—</div>
+        <div class="kpi-trend trend-flat">dernier rapport analysé</div>
+      </div>
+
+      <div class="kpi-card blue">
+        <div class="kpi-top">
+          <span class="kpi-label">Effectif présent</span>
+          <div class="kpi-icon"><svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M14 13c0-2.2-1.3-4-4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+        </div>
+        <div class="kpi-value" id="kpi-eff-val">—</div>
+        <div class="kpi-trend trend-flat">personnes sur site</div>
+      </div>
+    </div>
+
+    <!-- Courbe avancement + Alertes -->
+    <div class="grid-main">
+
+      <div class="chart-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Courbe d'avancement</div>
+            <div class="card-sub">Réel vs planifié — 16 dernières semaines</div>
+          </div>
+          <span class="card-badge badge-amber">Retard J+6</span>
+        </div>
+        <canvas id="chartAvancement"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Alertes & points critiques</div>
+            <div class="card-sub">Basé sur le dernier rapport</div>
+          </div>
+          <span id="badge-alertes" class="card-badge badge-red">— alertes</span>
+        </div>
+        <div class="alerts-list" id="alerts-list">
+          <div class="alert-item info"><span class="alert-dot"></span><div><div class="alert-title">Chargement...</div><div class="alert-desc">Lecture des données en cours.</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Avancement par activité + HSE + Historique -->
+    <div class="grid-3col">
+
+      <!-- Avancement par lot -->
+      <div class="chart-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Avancement par activité</div>
+            <div class="card-sub">% réalisé cumulé — référence planning</div>
+          </div>
+        </div>
+        <table class="prog-table">
+          <thead><tr><th>Activité</th><th style="width:110px">Progression</th><th>%</th></tr></thead>
+          <tbody>
+            <tr><td><div class="prog-name">Fondations</div><div class="prog-sub">Lots A &amp; B</div></td><td><div class="prog-bar-wrap"><div class="prog-bar" style="width:88%;background:#2d6a4f"></div></div></td><td><span class="prog-pct" style="color:#2d6a4f">88%</span></td></tr>
+            <tr><td><div class="prog-name">Montage pylônes</div><div class="prog-sub">P1–P35 / P1–P55</div></td><td><div class="prog-bar-wrap"><div class="prog-bar" style="width:64%;background:#1a3a2a"></div></div></td><td><span class="prog-pct" style="color:#1a3a2a">64%</span></td></tr>
+            <tr><td><div class="prog-name">Déroulage câble</div><div class="prog-sub">4.2 km / 8 km</div></td><td><div class="prog-bar-wrap"><div class="prog-bar" style="width:52%;background:#b5621e"></div></div></td><td><span class="prog-pct" style="color:#b5621e">52%</span></td></tr>
+            <tr><td><div class="prog-name">Raccordements</div><div class="prog-sub">12 / 28 points</div></td><td><div class="prog-bar-wrap"><div class="prog-bar" style="width:43%;background:#1a3050"></div></div></td><td><span class="prog-pct" style="color:#1a3050">43%</span></td></tr>
+            <tr><td><div class="prog-name">Travaux finition</div><div class="prog-sub">Lot C</div></td><td><div class="prog-bar-wrap"><div class="prog-bar" style="width:18%;background:#8b1a1a"></div></div></td><td><span class="prog-pct" style="color:#8b1a1a">18%</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- HSE -->
+      <div class="chart-card">
+        <div class="card-header">
+          <div><div class="card-title">HSE — Cumul chantier</div><div class="card-sub">Depuis le premier rapport</div></div>
+          <span class="card-badge badge-green">Niveau B</span>
+        </div>
+        <div class="hse-grid">
+          <div class="hse-item danger"><div class="hse-num" id="hse-incidents">—</div><div class="hse-lbl">Accidents/presqu'accidents</div></div>
+          <div class="hse-item warn"><div class="hse-num" id="hse-obs">—</div><div class="hse-lbl">Observations sécurité</div></div>
+          <div class="hse-item blue"><div class="hse-num" id="hse-causeries">—</div><div class="hse-lbl">Causeries réalisées</div></div>
+          <div class="hse-item ok"><div class="hse-num" id="hse-jours">—</div><div class="hse-lbl">Jours de chantier suivis</div></div>
+        </div>
+        <div style="margin-top:14px">
+          <canvas id="chartEffectif" style="max-height:100px"></canvas>
+        </div>
+      </div>
+
+      <!-- Historique rapports -->
+      <div class="chart-card">
+        <div class="card-header">
+          <div><div class="card-title">Historique rapports</div><div class="card-sub">5 derniers — cliquer pour ouvrir</div></div>
+        </div>
+        <div id="hist-list" class="hist-list"></div>
+        <a href="chantier-rapport-ia.html" style="display:block;margin-top:14px;text-align:center;font-size:12px;font-weight:700;color:var(--green);text-decoration:none;padding:9px;background:var(--green-light);border-radius:8px;">
+          + Nouveau rapport journalier
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+// ── LECTURE LOCALSTORAGE ─────────────────────────────
+const KEY = 'sitesync_rapports';
+
+function getRapports() {
+  return JSON.parse(localStorage.getItem(KEY) || '[]').sort((a,b) => a.date > b.date ? 1 : -1);
+}
+
+function getLastRapport() {
+  const all = getRapports();
+  return all.length ? all[all.length - 1] : null;
+}
+
+// Données de démo si aucun rapport réel
+function getDemoRapports() {
+  const semaines = ['2026-01-05','2026-01-12','2026-01-19','2026-01-26','2026-02-02','2026-02-09',
+    '2026-02-16','2026-02-23','2026-03-02','2026-03-09','2026-03-16','2026-03-23','2026-03-30','2026-04-06'];
+  const planifie = [4,8,12,17,22,28,34,40,45,50,55,59,63,68];
+  const reel     = [3,7,11,16,20,26,32,38,43,48,53,57,60,62];
+  return semaines.map((date,i) => ({
+    id: i, date, nom_chantier:'Ligne 60kV Berrechid–Settat',
+    chef_projet:'Chef de projet', chef_chantier:'Mohammed Karim',
+    avancement_reel: reel[i], avancement_prevu: planifie[i],
+    effectif: 22+Math.round(Math.random()*4), engins: 4+Math.round(Math.random()*2),
+    meteo: ['Ensoleillé','Nuageux','Ensoleillé','Vent fort','Ensoleillé'][Math.floor(Math.random()*5)],
+    hse_evenements: i===5 ? 'Presqu\'accident' : i===11 ? 'Observation sécurité' : 'Aucun incident',
+    hse_incident: i===5,
+    livraisons_attente: i===12 ? 'Câble ACSR 240mm² en attente' : '',
+    problemes: '', risques: '', texte_rapport: '',
+  }));
+}
+
+// ── INIT ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  let rapports = getRapports();
+  const isDemo = rapports.length === 0;
+  if (isDemo) rapports = getDemoRapports();
+
+  const last = rapports[rapports.length - 1];
+  const nom  = last?.nom_chantier || 'Ligne 60kV Berrechid–Settat';
+
+  // Filtre sur le même chantier
+  const serie = rapports.filter(r => r.nom_chantier === nom);
+
+  // ── Mise à jour UI ────────────────────────────────
+  document.querySelector('.chantier-selector .name').textContent = nom;
+  document.querySelector('.topbar-title').textContent = `Vue direction — ${nom}`;
+
+  if (isDemo) {
+    document.getElementById('demo-banner').style.display = 'flex';
+  }
+
+  // KPIs
+  const av = last?.avancement_reel ?? 62;
+  const avPrev = last?.avancement_prevu ?? 68;
+  const ecart = av - avPrev;
+  const effectif = last?.effectif ?? 24;
+  const joursDepuis = serie.length;
+  const joursRestants = Math.max(0, 180 - joursDepuis);
+
+  document.getElementById('kpi-av-val').textContent   = av + '%';
+  document.getElementById('kpi-jr-val').textContent   = joursRestants;
+  document.getElementById('kpi-eff-val').textContent  = effectif;
+
+  // Alertes actives
+  const alertesActives = [];
+  if (ecart < -5) alertesActives.push({ type:'danger', titre:'Retard planning', desc:`Avancement réel ${av}% — prévu ${avPrev}%. Écart de ${Math.abs(ecart)} points.` });
+  if (last?.hse_incident) alertesActives.push({ type:'danger', titre:'Incident HSE signalé', desc: last.hse_evenements });
+  if (last?.livraisons_attente) alertesActives.push({ type:'warn', titre:'Livraison en attente', desc: last.livraisons_attente });
+  if (last?.meteo === 'Vent fort' || last?.meteo === 'Orage') alertesActives.push({ type:'warn', titre:`Météo défavorable — ${last.meteo}`, desc:'Suspendre travaux aériens > 15m.' });
+  if (last?.problemes && last.problemes !== 'Aucun blocage') alertesActives.push({ type:'warn', titre:'Blocage signalé', desc: last.problemes });
+  // Bonne nouvelle si aucun incident
+  const incidentCount = serie.filter(r => r.hse_incident).length;
+  if (incidentCount === 0) alertesActives.push({ type:'ok', titre:`${joursDepuis} jours sans accident`, desc:'Aucun incident enregistré depuis le début du chantier.' });
+
+  document.getElementById('kpi-alerte-val').textContent = alertesActives.filter(a=>a.type!=='ok').length;
+
+  const trendEl = document.getElementById('kpi-trend-av');
+  if (ecart < -5) {
+    trendEl.className='kpi-trend trend-down';
+    trendEl.innerHTML=`<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg> Prévu ${avPrev}% — retard ${Math.abs(ecart)} pts`;
+  } else if (ecart >= 0) {
+    trendEl.className='kpi-trend trend-up';
+    trendEl.innerHTML=`<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,8 6,4 10,8" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg> En avance de ${ecart} pts sur le planning`;
+  } else {
+    trendEl.className='kpi-trend trend-flat';
+    trendEl.innerHTML=`Prévu ${avPrev}% — écart ${ecart} pts`;
+  }
+
+  // Alertes panel
+  const alertsEl = document.getElementById('alerts-list');
+  alertsEl.innerHTML = alertesActives.map(a => `
+    <div class="alert-item ${a.type}">
+      <span class="alert-dot"></span>
+      <div><div class="alert-title">${a.titre}</div><div class="alert-desc">${a.desc}</div></div>
+    </div>`).join('') || '<div class="alert-item ok"><span class="alert-dot"></span><div><div class="alert-title">Aucune alerte</div><div class="alert-desc">Tout est nominal aujourd\'hui.</div></div></div>';
+
+  document.getElementById('badge-alertes').textContent = alertesActives.filter(a=>a.type!=='ok').length + ' alertes';
+  document.getElementById('badge-alertes').className = 'card-badge ' + (alertesActives.some(a=>a.type==='danger') ? 'badge-red' : alertesActives.some(a=>a.type==='warn') ? 'badge-amber' : 'badge-green');
+
+  // Historique rapports
+  const histEl = document.getElementById('hist-list');
+  const recent = [...serie].reverse().slice(0,5);
+  histEl.innerHTML = recent.map(r => {
+    const ecartR = r.avancement_prevu ? r.avancement_reel - r.avancement_prevu : 0;
+    const statut = r.hse_incident ? 'danger' : ecartR < -5 ? 'warn' : 'ok';
+    const icon = r.hse_incident ? '⚠' : ecartR < -5 ? '▼' : '✓';
+    return `<div class="hist-item" onclick="showRapportDetail(${r.id})">
+      <span class="hist-icon ${statut}">${icon}</span>
+      <div class="hist-info">
+        <div class="hist-date">${r.date}</div>
+        <div class="hist-meta">${r.meteo} · ${r.effectif} pers. · ${r.engins} engins</div>
+      </div>
+      <div class="hist-av" style="color:${ecartR < -5 ? 'var(--amber)' : 'var(--green)'}">${r.avancement_reel}%</div>
+    </div>`;
+  }).join('');
+
+  // Courbe avancement
+  const labels = serie.map(r => r.date.slice(5)); // MM-DD
+  const dataReel = serie.map(r => r.avancement_reel);
+  const dataPrevu = serie.map(r => r.avancement_prevu);
+
+  new Chart(document.getElementById('chartAvancement'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Planifié', data:dataPrevu, borderColor:'#a8a890', borderWidth:1.5, borderDash:[5,4], pointRadius:0, tension:0.3, fill:false },
+        { label:'Réel', data:dataReel, borderColor:'#2d6a4f', borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#2d6a4f', pointBorderColor:'#fff', pointBorderWidth:2, tension:0.3,
+          fill:{ target:'origin', above:'rgba(45,106,79,0.07)' } }
+      ]
+    },
+    options: {
+      responsive:true, interaction:{ mode:'index', intersect:false },
+      plugins: {
+        legend:{ labels:{ font:{family:'Cabinet Grotesk',size:11}, color:'#6b6b58', boxWidth:20, padding:16 } },
+        tooltip:{ backgroundColor:'#fff', titleColor:'#1a1a14', bodyColor:'#6b6b58', borderColor:'#dedad2', borderWidth:1, padding:10,
+          titleFont:{family:'Cabinet Grotesk',weight:'700'}, bodyFont:{family:'DM Mono'},
+          callbacks:{ label: ctx => ` ${ctx.dataset.label} : ${ctx.parsed.y ?? '—'}%` } }
+      },
+      scales: {
+        x:{ grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{family:'DM Mono',size:10}, color:'#a8a890', maxTicksLimit:8} },
+        y:{ min:0, max:100, grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{family:'DM Mono',size:10}, color:'#a8a890', callback:v=>v+'%'} }
+      }
+    }
+  });
+
+  // Chart effectif
+  const effData = serie.slice(-8).map(r => r.effectif);
+  const effLabels = serie.slice(-8).map(r => r.date.slice(5));
+  new Chart(document.getElementById('chartEffectif'), {
+    type:'bar',
+    data:{ labels:effLabels, datasets:[{ label:'Effectif', data:effData, backgroundColor:'rgba(26,48,80,0.15)', borderColor:'#1a3050', borderWidth:1.5, borderRadius:4 }] },
+    options:{ responsive:true, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false}, ticks:{font:{family:'DM Mono',size:9},color:'#a8a890'}},
+               y:{beginAtZero:true, grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{family:'DM Mono',size:9},color:'#a8a890'}} } }
+  });
+
+  // HSE cumulé
+  const hseIncidents = serie.filter(r=>r.hse_incident).length;
+  const hseObs = serie.filter(r=>r.hse_evenements && r.hse_evenements.includes('Observation')).length;
+  const hseCauseries = serie.filter(r=>r.hse_evenements && r.hse_evenements.includes('Causerie')).length;
+  document.getElementById('hse-incidents').textContent = hseIncidents;
+  document.getElementById('hse-obs').textContent = hseObs;
+  document.getElementById('hse-causeries').textContent = hseCauseries;
+  document.getElementById('hse-jours').textContent = joursDepuis;
+
+  // Animate KPIs
+  function animVal(el, target, suffix='') {
+    let s=0; const dur=800;
+    const step = ts => { if(!s) s=ts; const p=Math.min((ts-s)/dur,1); const e=1-Math.pow(1-p,3);
+      el.textContent=Math.round(e*target)+suffix; if(p<1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+  animVal(document.getElementById('kpi-av-val'), av, '%');
+  animVal(document.getElementById('kpi-jr-val'), joursRestants);
+  animVal(document.getElementById('kpi-eff-val'), effectif);
+
+  // Progress bars animate
+  setTimeout(() => {
+    document.querySelectorAll('.prog-bar').forEach(b => {
+      const w = b.style.width; b.style.width='0';
+      setTimeout(()=>b.style.width=w, 50);
+    });
+  }, 200);
+});
+
+// ── Détail rapport ────────────────────────────────────
+function showRapportDetail(id) {
+  const rapports = JSON.parse(localStorage.getItem(KEY)||'[]');
+  const r = rapports.find(x=>x.id===id);
+  if (!r || !r.texte_rapport) { alert('Rapport sans texte généré.'); return; }
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rapport ${r.date}</title>
+  <style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 24px;font-size:13px;line-height:1.7;color:#1a1a1a}
+  h1{font-size:18px;border-bottom:2px solid #2d6a4f;padding-bottom:8px;color:#1a3a2a;margin-bottom:16px}
+  pre{white-space:pre-wrap;font-family:Arial,sans-serif;font-size:13px}</style></head>
+  <body><h1>Rapport journalier — ${r.nom_chantier} — ${r.date}</h1><pre>${r.texte_rapport}</pre></body></html>`);
+  win.document.close();
+}
+</script>
+</body>
+</html>

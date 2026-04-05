@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progev — Connexion</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0a0e0a; --bg2:#111711; --bg3:#182018;
+  --accent:#4dff7c; --accent2:#00c44f; --accent-dim:rgba(77,255,124,0.1);
+  --text:#e8f0e8; --text2:#8fa88f; --text3:#4a614a;
+  --border:rgba(77,255,124,0.15); --border2:rgba(77,255,124,0.08);
+  --danger:#ff6b4a; --radius:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(77,255,124,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(77,255,124,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+.card{position:relative;z-index:1;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:420px;}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
+.logo-sq{width:36px;height:36px;background:var(--accent);border-radius:8px;display:grid;place-items:center;}
+.logo-sq svg{width:20px;height:20px;}
+.logo-name{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--text);}
+.logo-name span{color:var(--accent);}
+h1{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;letter-spacing:-0.5px;margin-bottom:6px;}
+.subtitle{color:var(--text2);font-size:14px;margin-bottom:28px;}
+.tabs{display:flex;gap:4px;background:var(--bg3);border-radius:10px;padding:4px;margin-bottom:24px;}
+.tab{flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--text2);cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif;}
+.tab.active{background:var(--bg2);color:var(--accent);border:1px solid var(--border);}
+.field{margin-bottom:16px;}
+label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:500;}
+input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:12px 14px;outline:none;transition:border-color 0.2s;}
+input:focus{border-color:var(--accent2);}
+.btn{width:100%;padding:14px;border-radius:var(--radius);background:var(--accent);color:#0a0e0a;font-family:'Syne',sans-serif;font-weight:700;font-size:15px;border:none;cursor:pointer;transition:all 0.2s;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn:hover{background:#6fff96;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,0.2);border-top-color:#0a0e0a;border-radius:50%;animation:spin 0.7s linear infinite;display:none;}
+.btn.loading .spinner{display:block;}
+.btn.loading .btn-text{display:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.error-msg{background:rgba(255,107,74,0.1);border:1px solid rgba(255,107,74,0.3);color:var(--danger);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;}
+.success-msg{background:rgba(77,255,124,0.1);border:1px solid rgba(77,255,124,0.25);color:var(--accent2);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;}
+.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--text3);font-size:12px;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border2);}
+.footnote{text-align:center;font-size:12px;color:var(--text3);margin-top:20px;}
+.footnote a{color:var(--accent2);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-sq">
+      <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="2" fill="#0a0e0a"/><rect x="11" y="2" width="7" height="7" rx="2" fill="#0a0e0a"/><rect x="2" y="11" width="7" height="7" rx="2" fill="#0a0e0a"/><circle cx="14.5" cy="14.5" r="3.5" fill="#0a0e0a"/></svg>
+    </div>
+    <span class="logo-name">Pro<span>gev</span></span>
+  </div>
+
+  <h1 id="form-title">Bienvenue</h1>
+  <p class="subtitle" id="form-sub">Connectez-vous à votre espace chantier</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('login')">Connexion</button>
+    <button class="tab" onclick="switchTab('signup')">Créer un compte</button>
+  </div>
+
+  <div id="error-msg" class="error-msg"></div>
+  <div id="success-msg" class="success-msg"></div>
+
+  <!-- LOGIN FORM -->
+  <div id="login-form">
+    <div class="field">
+      <label>Email professionnel</label>
+      <input type="email" id="login-email" placeholder="vous@entreprise.ma" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Mot de passe</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn" id="btn-login" onclick="doLogin()">
+      <div class="spinner"></div>
+      <span class="btn-text">Se connecter</span>
+    </button>
+  </div>
+
+  <!-- SIGNUP FORM -->
+  <div id="signup-form" style="display:none">
+    <div class="field">
+      <label>Nom de votre entreprise</label>
+      <input type="text" id="signup-org" placeholder="Ex: BTP Maroc Construction">
+    </div>
+    <div class="field">
+      <label>Votre nom complet</label>
+      <input type="text" id="signup-name" placeholder="Prénom Nom">
+    </div>
+    <div class="field">
+      <label>Email professionnel</label>
+      <input type="email" id="signup-email" placeholder="vous@entreprise.ma" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Mot de passe (min. 8 caractères)</label>
+      <input type="password" id="signup-pass" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <button class="btn" id="btn-signup" onclick="doSignup()">
+      <div class="spinner"></div>
+      <span class="btn-text">Créer mon compte gratuit</span>
+    </button>
+  </div>
+
+  <div class="footnote">
+    Gestion de chantier IA · <a href="#">progev.com</a>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://kytoohxfditlhmvzehgj.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5dG9vaHhmZGl0bGhtdnplaGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTk2MzEsImV4cCI6MjA5MDk3NTYzMX0.oMTiAaoYlzY0cryj2pBM9v4si4hHiE0QFSlhiSTRAFA';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Redirect si déjà connecté
+sb.auth.getSession().then(({ data }) => {
+  if (data.session) window.location.href = 'dashboard-direction.html';
+});
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (tab==='login'&&i===0)||(tab==='signup'&&i===1)));
+  document.getElementById('login-form').style.display  = tab==='login'  ? 'block' : 'none';
+  document.getElementById('signup-form').style.display = tab==='signup' ? 'block' : 'none';
+  document.getElementById('form-title').textContent = tab==='login' ? 'Bienvenue' : 'Créer un compte';
+  document.getElementById('form-sub').textContent   = tab==='login' ? 'Connectez-vous à votre espace chantier' : 'Démarrez votre essai gratuit';
+  hideMessages();
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('success-msg').style.display = 'none';
+}
+function showSuccess(msg) {
+  const el = document.getElementById('success-msg');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('error-msg').style.display = 'none';
+}
+function hideMessages() {
+  document.getElementById('error-msg').style.display = 'none';
+  document.getElementById('success-msg').style.display = 'none';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  if (!email || !pass) { showError('Remplissez tous les champs.'); return; }
+
+  const btn = document.getElementById('btn-login');
+  btn.classList.add('loading'); btn.disabled = true;
+
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    showError(error.message === 'Invalid login credentials' ? 'Email ou mot de passe incorrect.' : error.message);
+    btn.classList.remove('loading'); btn.disabled = false;
+  } else {
+    window.location.href = 'dashboard-direction.html';
+  }
+}
+
+async function doSignup() {
+  const org   = document.getElementById('signup-org').value.trim();
+  const nom   = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const pass  = document.getElementById('signup-pass').value;
+
+  if (!org || !nom || !email || !pass) { showError('Remplissez tous les champs.'); return; }
+  if (pass.length < 8) { showError('Le mot de passe doit faire au moins 8 caractères.'); return; }
+
+  const btn = document.getElementById('btn-signup');
+  btn.classList.add('loading'); btn.disabled = true;
+
+  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  if (error) {
+    showError(error.message); btn.classList.remove('loading'); btn.disabled = false; return;
+  }
+
+  // Créer organisation + utilisateur
+  if (data.user) {
+    const { data: orgData } = await sb.from('organisations').insert({ nom: org, email }).select().single();
+    if (orgData) {
+      await sb.from('utilisateurs').insert({
+        id: data.user.id,
+        organisation_id: orgData.id,
+        nom,
+        role: 'admin'
+      });
+    }
+  }
+
+  showSuccess('Compte créé ! Vérifiez votre email pour confirmer, puis connectez-vous.');
+  btn.classList.remove('loading'); btn.disabled = false;
+  setTimeout(() => switchTab('login'), 3000);
+}
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const loginVisible = document.getElementById('login-form').style.display !== 'none';
+    if (loginVisible) doLogin(); else doSignup();
+  }
+});
+</script>
+</body>
+</html>

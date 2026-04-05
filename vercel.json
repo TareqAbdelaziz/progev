@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/dashboard-direction.html" },
+    { "source": "/rapport",   "destination": "/chantier-rapport-ia.html" }
+  ]
+}
