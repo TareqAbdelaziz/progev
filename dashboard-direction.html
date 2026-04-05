@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SiteSync IA — Tableau de bord Direction</title>
+<title>Progev — Tableau de bord Direction</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg:    #f5f3ee;
@@ -336,13 +337,14 @@ canvas { max-height: 220px; }
       <div class="logo-sq">
         <svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="#0a0e0a"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="#0a0e0a"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="#0a0e0a"/><circle cx="12" cy="12" r="3" fill="#0a0e0a"/></svg>
       </div>
-      <span class="logo-txt">Site<span>Sync</span> IA</span>
+      <span class="logo-txt">Pro<span>gev</span></span>
     </div>
     <div class="chantier-selector">
-      <div class="label">Chantier actif</div>
-      <div class="name">Ligne 60kV Berrechid–Settat</div>
-      <div class="meta">Lot 3 · Contrat C-2024-047</div>
+      <div class="label">Organisation</div>
+      <div class="name">—</div>
+      <div class="meta">Chargement...</div>
     </div>
+    <select id="chantier-sel" style="display:none;margin-top:8px;width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12px;padding:7px 10px;outline:none;"></select>
   </div>
 
   <nav class="sidebar-nav">
@@ -383,9 +385,15 @@ canvas { max-height: 220px; }
   </nav>
 
   <div class="sidebar-footer">
+    <div style="padding:0 8px;margin-bottom:10px;">
+      <div id="user-display" style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:6px;">—</div>
+      <button onclick="logout()" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:rgba(255,255,255,0.5);font-size:11px;padding:7px;cursor:pointer;font-family:'Cabinet Grotesk',sans-serif;transition:all 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">
+        Déconnexion
+      </button>
+    </div>
     <div class="status-live">
       <span class="live-dot"></span>
-      Données du 04 avril 2026
+      Données en temps réel
     </div>
   </div>
 </aside>
@@ -538,81 +546,97 @@ canvas { max-height: 220px; }
 </div>
 
 <script>
-// ── LECTURE LOCALSTORAGE ─────────────────────────────
-const KEY = 'sitesync_rapports';
+const SUPA_URL = 'https://kytoohxfditlhmvzehgj.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5dG9vaHhmZGl0bGhtdnplaGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTk2MzEsImV4cCI6MjA5MDk3NTYzMX0.oMTiAaoYlzY0cryj2pBM9v4si4hHiE0QFSlhiSTRAFA';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
-function getRapports() {
-  return JSON.parse(localStorage.getItem(KEY) || '[]').sort((a,b) => a.date > b.date ? 1 : -1);
+let chartAv = null, chartEff = null;
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; return; }
+
+  const { data: profile } = await sb.from('utilisateurs')
+    .select('*, organisations(*)')
+    .eq('id', session.user.id).single();
+
+  if (profile) {
+    document.querySelector('.chantier-selector .name').textContent = profile.organisations?.nom || '—';
+    document.querySelector('.chantier-selector .meta').textContent = profile.nom || session.user.email;
+    document.getElementById('user-display').textContent = profile.nom || session.user.email;
+
+    const { data: chantiers } = await sb.from('chantiers')
+      .select('*').eq('organisation_id', profile.organisation_id).eq('statut', 'en_cours')
+      .order('created_at', { ascending: false });
+
+    const liste = chantiers || [];
+    const sel = document.getElementById('chantier-sel');
+
+    if (liste.length > 0) {
+      sel.innerHTML = liste.map(c => `<option value="${c.id}">${c.nom}</option>`).join('');
+      sel.style.display = 'block';
+      await loadDashboard(liste[0]);
+      sel.addEventListener('change', async () => {
+        const c = liste.find(x => x.id === sel.value);
+        if (c) await loadDashboard(c);
+      });
+    } else {
+      document.getElementById('demo-banner').style.display = 'flex';
+      await loadDashboard(null);
+    }
+  }
+})();
+
+async function logout() {
+  await sb.auth.signOut();
+  window.location.href = 'index.html';
 }
 
-function getLastRapport() {
-  const all = getRapports();
-  return all.length ? all[all.length - 1] : null;
+async function loadDashboard(chantier) {
+  let rapports = [], isDemo = false;
+  if (chantier) {
+    const { data } = await sb.from('rapports').select('*')
+      .eq('chantier_id', chantier.id).order('date_rapport', { ascending: true });
+    rapports = data || [];
+    document.querySelector('.topbar-title').textContent = `Vue direction — ${chantier.nom}`;
+    document.querySelector('.topbar-sub').textContent = `${chantier.reference || ''} · ${rapports.length} rapports · ${chantier.duree_jours || 180}j planifiés`;
+  }
+  if (rapports.length === 0) {
+    isDemo = true; rapports = getDemoRapports();
+    document.getElementById('demo-banner').style.display = 'flex';
+  } else {
+    document.getElementById('demo-banner').style.display = 'none';
+  }
+  renderDashboard(rapports, chantier);
 }
 
-// Données de démo si aucun rapport réel
 function getDemoRapports() {
-  const semaines = ['2026-01-05','2026-01-12','2026-01-19','2026-01-26','2026-02-02','2026-02-09',
-    '2026-02-16','2026-02-23','2026-03-02','2026-03-09','2026-03-16','2026-03-23','2026-03-30','2026-04-06'];
-  const planifie = [4,8,12,17,22,28,34,40,45,50,55,59,63,68];
-  const reel     = [3,7,11,16,20,26,32,38,43,48,53,57,60,62];
-  return semaines.map((date,i) => ({
-    id: i, date, nom_chantier:'Ligne 60kV Berrechid–Settat',
-    chef_projet:'Chef de projet', chef_chantier:'Mohammed Karim',
-    avancement_reel: reel[i], avancement_prevu: planifie[i],
-    effectif: 22+Math.round(Math.random()*4), engins: 4+Math.round(Math.random()*2),
-    meteo: ['Ensoleillé','Nuageux','Ensoleillé','Vent fort','Ensoleillé'][Math.floor(Math.random()*5)],
-    hse_evenements: i===5 ? 'Presqu\'accident' : i===11 ? 'Observation sécurité' : 'Aucun incident',
-    hse_incident: i===5,
-    livraisons_attente: i===12 ? 'Câble ACSR 240mm² en attente' : '',
-    problemes: '', risques: '', texte_rapport: '',
+  const dates = Array.from({length:14}, (_,i) => {
+    const d = new Date('2026-01-05'); d.setDate(d.getDate()+i*7);
+    return d.toISOString().split('T')[0];
+  });
+  const p=[4,8,12,17,22,28,34,40,45,50,55,59,63,68];
+  const r=[3,7,11,16,20,26,32,38,43,48,53,57,60,62];
+  return dates.map((date,i) => ({
+    id:i, date_rapport:date, avancement_reel:r[i], avancement_prevu:p[i],
+    effectif:22+Math.round(Math.random()*4), engins:4, meteo:['Ensoleillé','Nuageux','Vent fort'][i%3],
+    hse_evenements:i===5?"Presqu'accident":'Aucun incident', hse_incident:i===5,
+    livraisons_attente:i===12?'Câble ACSR en attente':'', problemes:'', risques:'', texte_rapport:'',
   }));
 }
 
-// ── INIT ─────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  let rapports = getRapports();
-  const isDemo = rapports.length === 0;
-  if (isDemo) rapports = getDemoRapports();
-
-  const last = rapports[rapports.length - 1];
-  const nom  = last?.nom_chantier || 'Ligne 60kV Berrechid–Settat';
-
-  // Filtre sur le même chantier
-  const serie = rapports.filter(r => r.nom_chantier === nom);
-
-  // ── Mise à jour UI ────────────────────────────────
-  document.querySelector('.chantier-selector .name').textContent = nom;
-  document.querySelector('.topbar-title').textContent = `Vue direction — ${nom}`;
-
-  if (isDemo) {
-    document.getElementById('demo-banner').style.display = 'flex';
-  }
-
-  // KPIs
-  const av = last?.avancement_reel ?? 62;
-  const avPrev = last?.avancement_prevu ?? 68;
+function renderDashboard(rapports, chantier) {
+  if (!rapports.length) return;
+  const last = rapports[rapports.length-1];
+  const av = last.avancement_reel ?? 0;
+  const avPrev = last.avancement_prevu ?? 0;
   const ecart = av - avPrev;
-  const effectif = last?.effectif ?? 24;
-  const joursDepuis = serie.length;
-  const joursRestants = Math.max(0, 180 - joursDepuis);
+  const effectif = last.effectif ?? 0;
+  const joursRestants = Math.max(0, (chantier?.duree_jours || 180) - rapports.length);
 
-  document.getElementById('kpi-av-val').textContent   = av + '%';
-  document.getElementById('kpi-jr-val').textContent   = joursRestants;
-  document.getElementById('kpi-eff-val').textContent  = effectif;
-
-  // Alertes actives
-  const alertesActives = [];
-  if (ecart < -5) alertesActives.push({ type:'danger', titre:'Retard planning', desc:`Avancement réel ${av}% — prévu ${avPrev}%. Écart de ${Math.abs(ecart)} points.` });
-  if (last?.hse_incident) alertesActives.push({ type:'danger', titre:'Incident HSE signalé', desc: last.hse_evenements });
-  if (last?.livraisons_attente) alertesActives.push({ type:'warn', titre:'Livraison en attente', desc: last.livraisons_attente });
-  if (last?.meteo === 'Vent fort' || last?.meteo === 'Orage') alertesActives.push({ type:'warn', titre:`Météo défavorable — ${last.meteo}`, desc:'Suspendre travaux aériens > 15m.' });
-  if (last?.problemes && last.problemes !== 'Aucun blocage') alertesActives.push({ type:'warn', titre:'Blocage signalé', desc: last.problemes });
-  // Bonne nouvelle si aucun incident
-  const incidentCount = serie.filter(r => r.hse_incident).length;
-  if (incidentCount === 0) alertesActives.push({ type:'ok', titre:`${joursDepuis} jours sans accident`, desc:'Aucun incident enregistré depuis le début du chantier.' });
-
-  document.getElementById('kpi-alerte-val').textContent = alertesActives.filter(a=>a.type!=='ok').length;
+  animVal(document.getElementById('kpi-av-val'), av, '%');
+  animVal(document.getElementById('kpi-jr-val'), joursRestants);
+  animVal(document.getElementById('kpi-eff-val'), effectif);
 
   const trendEl = document.getElementById('kpi-trend-av');
   if (ecart < -5) {
@@ -620,121 +644,96 @@ window.addEventListener('DOMContentLoaded', () => {
     trendEl.innerHTML=`<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg> Prévu ${avPrev}% — retard ${Math.abs(ecart)} pts`;
   } else if (ecart >= 0) {
     trendEl.className='kpi-trend trend-up';
-    trendEl.innerHTML=`<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,8 6,4 10,8" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg> En avance de ${ecart} pts sur le planning`;
+    trendEl.innerHTML=`<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,8 6,4 10,8" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg> En avance de ${ecart} pts`;
   } else {
     trendEl.className='kpi-trend trend-flat';
-    trendEl.innerHTML=`Prévu ${avPrev}% — écart ${ecart} pts`;
+    trendEl.textContent=`Prévu ${avPrev}% — écart ${ecart} pts`;
   }
 
-  // Alertes panel
-  const alertsEl = document.getElementById('alerts-list');
-  alertsEl.innerHTML = alertesActives.map(a => `
-    <div class="alert-item ${a.type}">
-      <span class="alert-dot"></span>
-      <div><div class="alert-title">${a.titre}</div><div class="alert-desc">${a.desc}</div></div>
-    </div>`).join('') || '<div class="alert-item ok"><span class="alert-dot"></span><div><div class="alert-title">Aucune alerte</div><div class="alert-desc">Tout est nominal aujourd\'hui.</div></div></div>';
+  const alertes = [];
+  if (ecart < -5) alertes.push({type:'danger',titre:'Retard planning',desc:`Réel ${av}% — prévu ${avPrev}%. Écart ${Math.abs(ecart)} pts.`});
+  if (last.hse_incident) alertes.push({type:'danger',titre:'Incident HSE',desc:last.hse_evenements});
+  if (last.livraisons_attente) alertes.push({type:'warn',titre:'Livraison en attente',desc:last.livraisons_attente});
+  if (last.meteo==='Vent fort'||last.meteo==='Orage') alertes.push({type:'warn',titre:`Météo — ${last.meteo}`,desc:'Vérifier arrêt travaux aériens.'});
+  if (last.problemes&&last.problemes!=='Aucun blocage') alertes.push({type:'warn',titre:'Blocage signalé',desc:last.problemes});
+  if (!rapports.some(r=>r.hse_incident)) alertes.push({type:'ok',titre:`${rapports.length} jours sans accident`,desc:'Aucun incident enregistré.'});
 
-  document.getElementById('badge-alertes').textContent = alertesActives.filter(a=>a.type!=='ok').length + ' alertes';
-  document.getElementById('badge-alertes').className = 'card-badge ' + (alertesActives.some(a=>a.type==='danger') ? 'badge-red' : alertesActives.some(a=>a.type==='warn') ? 'badge-amber' : 'badge-green');
+  document.getElementById('kpi-alerte-val').textContent = alertes.filter(a=>a.type!=='ok').length;
+  document.getElementById('alerts-list').innerHTML = alertes.map(a =>
+    `<div class="alert-item ${a.type}"><span class="alert-dot"></span><div><div class="alert-title">${a.titre}</div><div class="alert-desc">${a.desc}</div></div></div>`
+  ).join('') || '<div class="alert-item ok"><span class="alert-dot"></span><div><div class="alert-title">Aucune alerte</div><div class="alert-desc">Tout est nominal.</div></div></div>';
 
-  // Historique rapports
+  const badgeEl = document.getElementById('badge-alertes');
+  const nbAl = alertes.filter(a=>a.type!=='ok').length;
+  badgeEl.textContent = nbAl + ' alertes';
+  badgeEl.className = 'card-badge ' + (alertes.some(a=>a.type==='danger')?'badge-red':alertes.some(a=>a.type==='warn')?'badge-amber':'badge-green');
+
+  document.getElementById('hse-incidents').textContent = rapports.filter(r=>r.hse_incident).length;
+  document.getElementById('hse-obs').textContent = rapports.filter(r=>r.hse_evenements?.includes('Observation')).length;
+  document.getElementById('hse-causeries').textContent = rapports.filter(r=>r.hse_evenements?.includes('Causerie')).length;
+  document.getElementById('hse-jours').textContent = rapports.length;
+
   const histEl = document.getElementById('hist-list');
-  const recent = [...serie].reverse().slice(0,5);
-  histEl.innerHTML = recent.map(r => {
-    const ecartR = r.avancement_prevu ? r.avancement_reel - r.avancement_prevu : 0;
-    const statut = r.hse_incident ? 'danger' : ecartR < -5 ? 'warn' : 'ok';
-    const icon = r.hse_incident ? '⚠' : ecartR < -5 ? '▼' : '✓';
-    return `<div class="hist-item" onclick="showRapportDetail(${r.id})">
-      <span class="hist-icon ${statut}">${icon}</span>
-      <div class="hist-info">
-        <div class="hist-date">${r.date}</div>
-        <div class="hist-meta">${r.meteo} · ${r.effectif} pers. · ${r.engins} engins</div>
-      </div>
-      <div class="hist-av" style="color:${ecartR < -5 ? 'var(--amber)' : 'var(--green)'}">${r.avancement_reel}%</div>
+  histEl.innerHTML = [...rapports].reverse().slice(0,5).map(r => {
+    const e = r.avancement_prevu ? r.avancement_reel - r.avancement_prevu : 0;
+    const st = r.hse_incident?'danger':e<-5?'warn':'ok';
+    const ic = r.hse_incident?'⚠':e<-5?'▼':'✓';
+    return `<div class="hist-item" onclick="showRapport(\`${(r.texte_rapport||'').replace(/`/g,"'")}\`, '${r.date_rapport}')">
+      <span class="hist-icon ${st}">${ic}</span>
+      <div class="hist-info"><div class="hist-date">${r.date_rapport}</div><div class="hist-meta">${r.meteo||''} · ${r.effectif||0} pers.</div></div>
+      <div class="hist-av" style="color:${e<-5?'var(--amber)':'var(--green)'}">${r.avancement_reel}%</div>
     </div>`;
   }).join('');
 
-  // Courbe avancement
-  const labels = serie.map(r => r.date.slice(5)); // MM-DD
-  const dataReel = serie.map(r => r.avancement_reel);
-  const dataPrevu = serie.map(r => r.avancement_prevu);
-
-  new Chart(document.getElementById('chartAvancement'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label:'Planifié', data:dataPrevu, borderColor:'#a8a890', borderWidth:1.5, borderDash:[5,4], pointRadius:0, tension:0.3, fill:false },
-        { label:'Réel', data:dataReel, borderColor:'#2d6a4f', borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#2d6a4f', pointBorderColor:'#fff', pointBorderWidth:2, tension:0.3,
-          fill:{ target:'origin', above:'rgba(45,106,79,0.07)' } }
-      ]
-    },
-    options: {
-      responsive:true, interaction:{ mode:'index', intersect:false },
-      plugins: {
-        legend:{ labels:{ font:{family:'Cabinet Grotesk',size:11}, color:'#6b6b58', boxWidth:20, padding:16 } },
-        tooltip:{ backgroundColor:'#fff', titleColor:'#1a1a14', bodyColor:'#6b6b58', borderColor:'#dedad2', borderWidth:1, padding:10,
-          titleFont:{family:'Cabinet Grotesk',weight:'700'}, bodyFont:{family:'DM Mono'},
-          callbacks:{ label: ctx => ` ${ctx.dataset.label} : ${ctx.parsed.y ?? '—'}%` } }
-      },
-      scales: {
-        x:{ grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{family:'DM Mono',size:10}, color:'#a8a890', maxTicksLimit:8} },
-        y:{ min:0, max:100, grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{family:'DM Mono',size:10}, color:'#a8a890', callback:v=>v+'%'} }
-      }
-    }
+  const labels = rapports.map(r=>r.date_rapport.slice(5));
+  if (chartAv) chartAv.destroy();
+  chartAv = new Chart(document.getElementById('chartAvancement'), {
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Planifié',data:rapports.map(r=>r.avancement_prevu),borderColor:'#a8a890',borderWidth:1.5,borderDash:[5,4],pointRadius:0,tension:0.3,fill:false},
+      {label:'Réel',data:rapports.map(r=>r.avancement_reel),borderColor:'#2d6a4f',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#2d6a4f',pointBorderColor:'#fff',pointBorderWidth:2,tension:0.3,fill:{target:'origin',above:'rgba(45,106,79,0.07)'}}
+    ]},
+    options:{responsive:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{font:{family:'Cabinet Grotesk',size:11},color:'#6b6b58',boxWidth:20,padding:16}},
+        tooltip:{backgroundColor:'#fff',titleColor:'#1a1a14',bodyColor:'#6b6b58',borderColor:'#dedad2',borderWidth:1,padding:10,
+          titleFont:{family:'Cabinet Grotesk',weight:'700'},bodyFont:{family:'DM Mono'},
+          callbacks:{label:ctx=>` ${ctx.dataset.label} : ${ctx.parsed.y??'—'}%`}}},
+      scales:{x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{family:'DM Mono',size:10},color:'#a8a890',maxTicksLimit:8}},
+              y:{min:0,max:100,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{family:'DM Mono',size:10},color:'#a8a890',callback:v=>v+'%'}}}}
   });
 
-  // Chart effectif
-  const effData = serie.slice(-8).map(r => r.effectif);
-  const effLabels = serie.slice(-8).map(r => r.date.slice(5));
-  new Chart(document.getElementById('chartEffectif'), {
+  const sl8 = rapports.slice(-8);
+  if (chartEff) chartEff.destroy();
+  chartEff = new Chart(document.getElementById('chartEffectif'), {
     type:'bar',
-    data:{ labels:effLabels, datasets:[{ label:'Effectif', data:effData, backgroundColor:'rgba(26,48,80,0.15)', borderColor:'#1a3050', borderWidth:1.5, borderRadius:4 }] },
-    options:{ responsive:true, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{display:false}, ticks:{font:{family:'DM Mono',size:9},color:'#a8a890'}},
-               y:{beginAtZero:true, grid:{color:'rgba(0,0,0,0.04)'}, ticks:{font:{family:'DM Mono',size:9},color:'#a8a890'}} } }
+    data:{labels:sl8.map(r=>r.date_rapport.slice(5)),datasets:[{label:'Effectif',data:sl8.map(r=>r.effectif),backgroundColor:'rgba(26,48,80,0.15)',borderColor:'#1a3050',borderWidth:1.5,borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{family:'DM Mono',size:9},color:'#a8a890'}},
+              y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{family:'DM Mono',size:9},color:'#a8a890'}}}}
   });
 
-  // HSE cumulé
-  const hseIncidents = serie.filter(r=>r.hse_incident).length;
-  const hseObs = serie.filter(r=>r.hse_evenements && r.hse_evenements.includes('Observation')).length;
-  const hseCauseries = serie.filter(r=>r.hse_evenements && r.hse_evenements.includes('Causerie')).length;
-  document.getElementById('hse-incidents').textContent = hseIncidents;
-  document.getElementById('hse-obs').textContent = hseObs;
-  document.getElementById('hse-causeries').textContent = hseCauseries;
-  document.getElementById('hse-jours').textContent = joursDepuis;
-
-  // Animate KPIs
-  function animVal(el, target, suffix='') {
-    let s=0; const dur=800;
-    const step = ts => { if(!s) s=ts; const p=Math.min((ts-s)/dur,1); const e=1-Math.pow(1-p,3);
-      el.textContent=Math.round(e*target)+suffix; if(p<1) requestAnimationFrame(step); };
-    requestAnimationFrame(step);
-  }
-  animVal(document.getElementById('kpi-av-val'), av, '%');
-  animVal(document.getElementById('kpi-jr-val'), joursRestants);
-  animVal(document.getElementById('kpi-eff-val'), effectif);
-
-  // Progress bars animate
   setTimeout(() => {
     document.querySelectorAll('.prog-bar').forEach(b => {
-      const w = b.style.width; b.style.width='0';
-      setTimeout(()=>b.style.width=w, 50);
+      const w=b.style.width; b.style.width='0'; setTimeout(()=>b.style.width=w,50);
     });
   }, 200);
-});
+}
 
-// ── Détail rapport ────────────────────────────────────
-function showRapportDetail(id) {
-  const rapports = JSON.parse(localStorage.getItem(KEY)||'[]');
-  const r = rapports.find(x=>x.id===id);
-  if (!r || !r.texte_rapport) { alert('Rapport sans texte généré.'); return; }
-  const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rapport ${r.date}</title>
-  <style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 24px;font-size:13px;line-height:1.7;color:#1a1a1a}
-  h1{font-size:18px;border-bottom:2px solid #2d6a4f;padding-bottom:8px;color:#1a3a2a;margin-bottom:16px}
-  pre{white-space:pre-wrap;font-family:Arial,sans-serif;font-size:13px}</style></head>
-  <body><h1>Rapport journalier — ${r.nom_chantier} — ${r.date}</h1><pre>${r.texte_rapport}</pre></body></html>`);
+function animVal(el, target, suffix='') {
+  let s=0; const dur=800;
+  const step=ts=>{if(!s)s=ts;const p=Math.min((ts-s)/dur,1);const e=1-Math.pow(1-p,3);
+    el.textContent=Math.round(e*target)+suffix;if(p<1)requestAnimationFrame(step);};
+  requestAnimationFrame(step);
+}
+
+function showRapport(texte, date) {
+  if (!texte||texte.trim()==='') { alert('Pas de texte pour ce rapport.'); return; }
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rapport ${date}</title>
+  <style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 24px;font-size:13px;line-height:1.7}
+  h1{font-size:16px;border-bottom:2px solid #2d6a4f;padding-bottom:8px;color:#1a3a2a;margin-bottom:16px}
+  pre{white-space:pre-wrap;font-family:Arial}</style></head>
+  <body><h1>Rapport journalier — ${date}</h1><pre>${texte}</pre></body></html>`);
   win.document.close();
 }
 </script>
