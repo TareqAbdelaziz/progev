@@ -520,14 +520,52 @@ document.getElementById('date_rapport').valueAsDate = new Date();
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { window.location.href = 'index.html'; return; }
-  const { data: profile } = await sb.from('utilisateurs')
+
+  // Tenter de charger le profil — créer si inexistant
+  let { data: profile } = await sb.from('utilisateurs')
     .select('*, organisations(*)')
-    .eq('id', session.user.id).single();
+    .eq('id', session.user.id)
+    .single();
+
+  // Si profil absent (erreur 500/404) — créer org + profil automatiquement
+  if (!profile) {
+    const email = session.user.email;
+    const nom = email.split('@')[0];
+
+    // Créer organisation
+    const { data: org } = await sb.from('organisations')
+      .insert({ nom: 'Mon entreprise', email })
+      .select().single();
+
+    if (org) {
+      // Créer profil utilisateur
+      await sb.from('utilisateurs').insert({
+        id: session.user.id,
+        organisation_id: org.id,
+        nom,
+        role: 'admin'
+      });
+
+      // Recharger le profil
+      const { data: newProfile } = await sb.from('utilisateurs')
+        .select('*, organisations(*)')
+        .eq('id', session.user.id)
+        .single();
+      profile = newProfile;
+    }
+  }
+
   currentUser = profile;
+
   if (profile) {
     document.getElementById('user-name').textContent = profile.nom || session.user.email;
     document.getElementById('org-name').textContent = profile.organisations?.nom || '';
     await loadChantiers(profile.organisation_id);
+  } else {
+    // Fallback minimal — affiche le formulaire sans profil
+    document.getElementById('user-name').textContent = session.user.email;
+    document.getElementById('org-name').textContent = 'Compte non configuré';
+    showToast('Profil en cours de création — réessaie dans 10 secondes', 'error');
   }
 })();
 
