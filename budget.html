@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progev — Budget & Finances</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --cream:#faf9f6;--cream2:#f3f0eb;--cream3:#ede9e2;
+  --ink:#1a1a14;--ink2:#4a4a40;--ink3:#9a9a8e;
+  --border:#e2ddd6;--border2:#ccc9c0;
+  --accent:#b45309;--accent-light:#fef3c7;
+  --white:#ffffff;
+  --green:#166534;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+  --red:#991b1b;--red-bg:#fef2f2;--red-border:#fca5a5;
+  --amber:#92400e;--amber-bg:#fffbeb;--amber-border:#fcd34d;
+  --blue:#1e40af;--blue-bg:#eff6ff;--blue-border:#bfdbfe;
+  --radius:10px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;}
+
+/* TOPBAR */
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 40px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-left{display:flex;align-items:center;gap:28px;}
+.logo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);text-decoration:none;letter-spacing:-0.3px;}
+.logo span{color:var(--accent);}
+.topbar-nav{display:flex;gap:0;}
+.nav-item{padding:0 16px;height:58px;display:flex;align-items:center;font-size:13px;color:var(--ink3);text-decoration:none;border-bottom:2px solid transparent;transition:all 0.15s;}
+.nav-item:hover{color:var(--ink);}
+.nav-item.active{color:var(--accent);border-bottom-color:var(--accent);}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--cream2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;}
+.user-avatar{width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--white);font-size:10px;font-weight:600;display:grid;place-items:center;}
+.user-name{font-size:12px;font-weight:500;}
+.btn-logout{font-size:12px;color:var(--ink3);background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;}
+.btn-logout:hover{border-color:var(--border2);color:var(--ink);}
+.chantier-sel{background:var(--cream2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);outline:none;max-width:220px;}
+
+/* CONTENT */
+.content{max-width:1200px;margin:0 auto;padding:32px 40px 80px;}
+
+/* PAGE HEADER */
+.page-header{margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.page-eyebrow{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;color:var(--ink);letter-spacing:-0.5px;}
+.page-title em{color:var(--accent);font-style:italic;}
+.page-sub{font-size:13px;color:var(--ink3);margin-top:4px;font-family:'DM Mono',monospace;}
+
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:28px;}
+.tab{padding:12px 20px;font-size:13px;font-weight:500;color:var(--ink3);background:transparent;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;font-family:'DM Sans',sans-serif;}
+.tab:hover{color:var(--ink);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;}
+.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden;}
+.kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;}
+.kpi-card.green::after{background:var(--green);}
+.kpi-card.amber::after{background:var(--accent);}
+.kpi-card.red::after{background:var(--red);}
+.kpi-card.blue::after{background:var(--blue);}
+.kpi-card.purple::after{background:#7c3aed;}
+.kpi-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink3);margin-bottom:8px;}
+.kpi-value{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;line-height:1;letter-spacing:-0.5px;margin-bottom:6px;}
+.kpi-card.green .kpi-value{color:var(--green);}
+.kpi-card.amber .kpi-value{color:var(--accent);}
+.kpi-card.red .kpi-value{color:var(--red);}
+.kpi-card.blue .kpi-value{color:var(--blue);}
+.kpi-card.purple .kpi-value{color:#7c3aed;}
+.kpi-sub{font-size:11px;color:var(--ink3);}
+
+/* ALERT BANNER */
+.alert-banner{padding:12px 16px;border-radius:10px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.alert-banner.danger{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);}
+.alert-banner.warn{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);}
+.alert-banner.ok{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:22px 24px;margin-bottom:18px;}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.card-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);}
+.card-sub{font-size:11px;color:var(--ink3);margin-top:2px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+
+/* FORM */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.field label{font-size:11px;letter-spacing:0.5px;color:var(--ink3);font-weight:500;text-transform:uppercase;}
+.field input,.field select,.field textarea{
+  background:var(--white);border:1px solid var(--border);border-radius:var(--radius);
+  padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);
+  outline:none;transition:border-color 0.2s;width:100%;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+.field input::placeholder,.field textarea::placeholder{color:var(--ink3);}
+
+/* POSTES TABLE */
+.postes-table{width:100%;border-collapse:collapse;font-size:13px;}
+.postes-table th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:500;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
+.postes-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.postes-table tr:last-child td{border-bottom:none;}
+.postes-table tr:hover td{background:var(--cream);}
+.postes-table input{border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--white);width:100%;outline:none;}
+.postes-table input:focus{border-color:var(--accent);}
+.postes-table select{border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--ink);background:var(--white);outline:none;width:100%;}
+
+/* PROGRESS BAR */
+.prog-wrap{position:relative;height:8px;background:var(--cream3);border-radius:4px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:4px;transition:width 0.8s ease;}
+.prog-ok{background:var(--green);}
+.prog-warn{background:var(--accent);}
+.prog-danger{background:var(--red);}
+
+/* STATUS BADGE */
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;}
+.status-ok{background:var(--green-bg);color:var(--green);}
+.status-warn{background:var(--amber-bg);color:var(--amber);}
+.status-danger{background:var(--red-bg);color:var(--red);}
+
+/* DEPENSES TABLE */
+.dep-table{width:100%;border-collapse:collapse;font-size:13px;}
+.dep-table th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
+.dep-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--ink2);}
+.dep-table tr:hover td{background:var(--cream);}
+.dep-table td.montant{font-family:'DM Mono',monospace;font-weight:500;color:var(--ink);text-align:right;}
+.dep-table td.date{font-family:'DM Mono',monospace;font-size:12px;color:var(--ink3);}
+
+/* BUTTONS */
+.btn-primary{background:var(--ink);color:var(--white);border:none;border-radius:var(--radius);padding:11px 20px;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:7px;}
+.btn-primary:hover{background:var(--accent);}
+.btn-secondary{background:var(--cream2);color:var(--ink2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;}
+.btn-danger:hover{background:var(--red);color:var(--white);}
+.btn-add{background:transparent;color:var(--accent);border:1px dashed var(--accent);border-radius:var(--radius);padding:9px 16px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all 0.15s;width:100%;margin-top:8px;}
+.btn-add:hover{background:var(--accent-light);}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;z-index:999;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:500;border:1px solid;transform:translateY(60px);opacity:0;transition:all 0.3s ease;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{background:var(--green-bg);border-color:var(--green-border);color:var(--green);}
+.toast.error{background:var(--red-bg);border-color:var(--red-border);color:var(--red);}
+
+/* SETUP BANNER */
+.setup-banner{background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;}
+.setup-banner h3{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--blue);margin-bottom:8px;}
+.setup-banner p{font-size:13px;color:var(--ink3);margin-bottom:16px;}
+
+/* MARGE INDICATOR */
+.marge-indicator{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:10px;margin-bottom:16px;}
+.marge-indicator.positive{background:var(--green-bg);border:1px solid var(--green-border);}
+.marge-indicator.negative{background:var(--red-bg);border:1px solid var(--red-border);}
+.marge-indicator.neutral{background:var(--amber-bg);border:1px solid var(--amber-border);}
+.marge-val{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;}
+.marge-indicator.positive .marge-val{color:var(--green);}
+.marge-indicator.negative .marge-val{color:var(--red);}
+.marge-indicator.neutral .marge-val{color:var(--amber);}
+.marge-info{flex:1;}
+.marge-label{font-weight:600;font-size:14px;}
+.marge-detail{font-size:12px;color:var(--ink3);margin-top:3px;}
+
+@media(max-width:900px){.kpi-row{grid-template-columns:1fr 1fr;}.grid-2,.grid-3{grid-template-columns:1fr;}.topbar-nav{display:none;}.content{padding:20px 16px;}}
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-left">
+    <a href="dashboard-direction.html" class="logo">Pro<span>gev</span></a>
+    <div class="topbar-nav">
+      <a href="dashboard-direction.html" class="nav-item">Dashboard</a>
+      <a href="chantier-rapport-ia.html" class="nav-item">Rapport</a>
+      <a href="budget.html" class="nav-item active">Budget</a>
+      <a href="#" class="nav-item">HSE</a>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <select id="chantier-sel" class="chantier-sel"></select>
+    <div class="user-chip">
+      <div class="user-avatar" id="user-avatar">—</div>
+      <span class="user-name" id="user-display">—</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">Déconnexion</button>
+  </div>
+</nav>
+
+<div class="content">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow">Module financier</div>
+      <div class="page-title">Budget & <em>Finances</em></div>
+      <div class="page-sub" id="page-sub">Chargement...</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-secondary" onclick="switchTab('depenses')">+ Saisir dépense</button>
+      <button class="btn-primary" onclick="switchTab('setup')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.5V7l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Configurer budget
+      </button>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div id="alerts-container"></div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('dashboard')">Vue d'ensemble</button>
+    <button class="tab" onclick="switchTab('postes')">Postes budgétaires</button>
+    <button class="tab" onclick="switchTab('depenses')">Saisie dépenses</button>
+    <button class="tab" onclick="switchTab('historique')">Historique</button>
+    <button class="tab" onclick="switchTab('setup')">Configuration</button>
+  </div>
+
+  <!-- TAB: DASHBOARD -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div id="no-budget-banner" style="display:none;">
+      <div class="setup-banner">
+        <h3>Budget non configuré</h3>
+        <p>Définissez le budget initial de ce chantier pour activer le suivi financier.</p>
+        <button class="btn-primary" onclick="switchTab('setup')">Configurer le budget →</button>
+      </div>
+    </div>
+    <div id="dashboard-content">
+      <!-- KPIs -->
+      <div class="kpi-row">
+        <div class="kpi-card blue">
+          <div class="kpi-label">Montant marché</div>
+          <div class="kpi-value" id="kpi-marche">—</div>
+          <div class="kpi-sub">CA contrat</div>
+        </div>
+        <div class="kpi-card amber">
+          <div class="kpi-label">Budget initial</div>
+          <div class="kpi-value" id="kpi-budget">—</div>
+          <div class="kpi-sub">Enveloppe allouée</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-label">Dépenses réelles</div>
+          <div class="kpi-value" id="kpi-depenses">—</div>
+          <div class="kpi-sub" id="kpi-depenses-pct">0% du budget</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">Marge estimée</div>
+          <div class="kpi-value" id="kpi-marge">—</div>
+          <div class="kpi-sub" id="kpi-marge-pct">—% taux marge</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">Reste à dépenser</div>
+          <div class="kpi-value" id="kpi-reste">—</div>
+          <div class="kpi-sub">Budget — dépenses</div>
+        </div>
+      </div>
+
+      <!-- Marge indicator -->
+      <div class="marge-indicator neutral" id="marge-indicator">
+        <div class="marge-val" id="marge-val">—</div>
+        <div class="marge-info">
+          <div class="marge-label" id="marge-label">Marge estimée à terminaison</div>
+          <div class="marge-detail" id="marge-detail">Configurez le budget pour calculer la marge</div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Consommation budgétaire</div><div class="card-sub">Dépenses réelles par semaine</div></div>
+          </div>
+          <canvas id="chartDepenses" style="max-height:200px;"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Budget vs Dépenses par poste</div><div class="card-sub">Écart par catégorie</div></div>
+          </div>
+          <canvas id="chartPostes" style="max-height:200px;"></canvas>
+        </div>
+      </div>
+
+      <!-- Postes summary -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Synthèse par poste</div></div>
+        </div>
+        <table class="postes-table">
+          <thead>
+            <tr>
+              <th>Poste</th>
+              <th>Budget alloué</th>
+              <th>Dépenses réelles</th>
+              <th>Progression</th>
+              <th>Écart</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="postes-summary-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--ink3);padding:20px;">Aucun poste budgétaire défini</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: POSTES BUDGETAIRES -->
+  <div class="tab-content" id="tab-postes">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Postes budgétaires</div><div class="card-sub">Allocation détaillée du budget par poste de coût</div></div>
+        <button class="btn-secondary" onclick="addPosteRow()">+ Ajouter un poste</button>
+      </div>
+      <table class="postes-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Nom du poste</th>
+            <th>Catégorie</th>
+            <th>Budget alloué</th>
+            <th>Reste à faire estimé</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="postes-tbody"></tbody>
+      </table>
+      <button class="btn-add" onclick="addPosteRow()">+ Ajouter un poste de coût</button>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+        <button class="btn-primary" onclick="savePostes()">Enregistrer les postes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: DEPENSES -->
+  <div class="tab-content" id="tab-depenses">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Saisir une dépense</div><div class="card-sub">Enregistrez une dépense réelle sur ce chantier</div></div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <div class="field"><label>Date de la dépense</label><input type="date" id="dep-date"></div>
+          <div class="field"><label>Description</label><input type="text" id="dep-desc" placeholder="Ex: Facture fournisseur câble ACSR 240mm²"></div>
+          <div class="field"><label>Fournisseur / prestataire</label><input type="text" id="dep-fourn" placeholder="Ex: Nexans Maroc"></div>
+          <div class="field"><label>Référence (facture / BL)</label><input type="text" id="dep-ref" placeholder="Ex: FAC-2026-0142"></div>
+        </div>
+        <div>
+          <div class="field">
+            <label>Poste budgétaire</label>
+            <select id="dep-poste">
+              <option value="">— Sélectionner un poste —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Type de coût</label>
+            <select id="dep-type">
+              <option value="reel">Coût réel (facture reçue)</option>
+              <option value="engage">Coût engagé (commande passée)</option>
+              <option value="provision">Provision / estimation</option>
+            </select>
+          </div>
+          <div class="field"><label>Montant (<span id="dep-devise">MAD</span>)</label><input type="number" id="dep-montant" placeholder="0.00" step="0.01" min="0"></div>
+          <div style="margin-top:8px;">
+            <button class="btn-primary" onclick="saveDep()" style="width:100%;">Enregistrer la dépense</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dernières dépenses -->
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Dépenses récentes</div><div class="card-sub">10 dernières entrées</div></div>
+      </div>
+      <table class="dep-table">
+        <thead>
+          <tr><th>Date</th><th>Description</th><th>Fournisseur</th><th>Poste</th><th>Type</th><th style="text-align:right;">Montant</th><th></th></tr>
+        </thead>
+        <tbody id="dep-recent-tbody">
+          <tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:20px;">Aucune dépense enregistrée</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: HISTORIQUE -->
+  <div class="tab-content" id="tab-historique">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Historique complet</div><div class="card-sub">Toutes les dépenses du chantier</div></div>
+        <div style="display:flex;gap:8px;">
+          <select id="filter-poste" class="chantier-sel" onchange="loadHistorique()" style="max-width:160px;"><option value="">Tous les postes</option></select>
+          <select id="filter-type" class="chantier-sel" onchange="loadHistorique()" style="max-width:140px;">
+            <option value="">Tous types</option>
+            <option value="reel">Réel</option>
+            <option value="engage">Engagé</option>
+            <option value="provision">Provision</option>
+          </select>
+        </div>
+      </div>
+      <table class="dep-table">
+        <thead>
+          <tr><th>Date</th><th>S.</th><th>Description</th><th>Fournisseur</th><th>Poste</th><th>Réf.</th><th>Type</th><th style="text-align:right;">Montant</th></tr>
+        </thead>
+        <tbody id="historique-tbody">
+          <tr><td colspan="8" style="text-align:center;color:var(--ink3);padding:20px;">Aucune dépense</td></tr>
+        </tbody>
+      </table>
+      <div id="historique-total" style="display:none;text-align:right;padding:12px 0;border-top:1px solid var(--border);font-family:'DM Mono',monospace;font-weight:500;font-size:14px;color:var(--ink);"></div>
+    </div>
+  </div>
+
+  <!-- TAB: SETUP -->
+  <div class="tab-content" id="tab-setup">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Configuration du budget</div><div class="card-sub">Paramètres financiers du chantier</div></div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <div class="field"><label>Montant du marché / contrat</label><input type="number" id="setup-marche" placeholder="0" step="1000" min="0"></div>
+          <div class="field"><label>Budget initial global</label><input type="number" id="setup-budget" placeholder="0" step="1000" min="0"></div>
+          <div class="field"><label>Taux de marge cible (%)</label><input type="number" id="setup-marge" placeholder="10" step="0.5" min="0" max="100"></div>
+          <div class="field">
+            <label>Devise</label>
+            <select id="setup-devise">
+              <option value="MAD">Dirham marocain (MAD)</option>
+              <option value="EUR">Euro (EUR)</option>
+              <option value="USD">Dollar (USD)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="field"><label>Contingence / aléas</label><input type="number" id="setup-contingence" placeholder="0" step="1000" min="0"></div>
+          <div class="field"><label>Notes / observations</label><textarea id="setup-notes" placeholder="Ex: Budget révisé après avenant n°2..." style="min-height:100px;"></textarea></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button class="btn-primary" onclick="saveBudgetSetup()">Enregistrer la configuration</button>
+      </div>
+    </div>
+
+    <!-- Postes rapides -->
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">Postes de coût standards</div><div class="card-sub">Cliquez pour ajouter les postes typiques d'un projet électrique</div></div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;" id="postes-presets">
+        <button class="btn-secondary" onclick="addPreset('MO','Main d\'œuvre','main_oeuvre')">+ Main d'œuvre</button>
+        <button class="btn-secondary" onclick="addPreset('MAT','Matériaux & équipements','materiaux')">+ Matériaux</button>
+        <button class="btn-secondary" onclick="addPreset('ST','Sous-traitance','sous_traitance')">+ Sous-traitance</button>
+        <button class="btn-secondary" onclick="addPreset('ENG','Engins & location','engins')">+ Engins</button>
+        <button class="btn-secondary" onclick="addPreset('LOG','Logistique & transport','logistique')">+ Logistique</button>
+        <button class="btn-secondary" onclick="addPreset('ETU','Études & ingénierie','etudes')">+ Études</button>
+        <button class="btn-secondary" onclick="addPreset('HSE','HSE & qualité','hse')">+ HSE</button>
+        <button class="btn-secondary" onclick="addPreset('FC','Frais chantier','frais_chantier')">+ Frais chantier</button>
+        <button class="btn-secondary" onclick="addPreset('IMP','Imprévus','autre')">+ Imprévus</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL='https://kytoohxfditlhmvzehgj.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5dG9vaHhmZGl0bGhtdnplaGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTk2MzEsImV4cCI6MjA5MDk3NTYzMX0.oMTiAaoYlzY0cryj2pBM9v4si4hHiE0QFSlhiSTRAFA';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+let currentUser=null,currentChantier=null,mesChantiers=[];
+let budgetData=null,postes=[],depenses=[];
+let chartDep=null,chartPost=null;
+
+// ── INIT ──────────────────────────────────────────────
+(async()=>{
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+  let{data:profile}=await sb.from('utilisateurs').select('*,organisations(*)').eq('id',session.user.id).single();
+  if(!profile){window.location.href='index.html';return;}
+  currentUser=profile;
+  const initials=(profile.nom||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('user-avatar').textContent=initials;
+  document.getElementById('user-display').textContent=profile.nom||session.user.email;
+  const{data:chantiers}=await sb.from('chantiers').select('*').eq('organisation_id',profile.organisation_id).eq('statut','en_cours').order('created_at',{ascending:false});
+  mesChantiers=chantiers||[];
+  const sel=document.getElementById('chantier-sel');
+  if(mesChantiers.length>0){
+    sel.innerHTML=mesChantiers.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+    currentChantier=mesChantiers[0];
+    await loadAll();
+    sel.addEventListener('change',async()=>{
+      currentChantier=mesChantiers.find(c=>c.id===sel.value);
+      await loadAll();
+    });
+  }else{
+    document.getElementById('page-sub').textContent='Aucun chantier actif';
+  }
+  document.getElementById('dep-date').valueAsDate=new Date();
+})();
+
+async function logout(){await sb.auth.signOut();window.location.href='index.html';}
+
+// ── LOAD ALL ─────────────────────────────────────────
+async function loadAll(){
+  if(!currentChantier)return;
+  document.getElementById('page-sub').textContent=`${currentChantier.nom} · ${currentChantier.reference||''}`;
+  await Promise.all([loadBudget(),loadPostes(),loadDepenses()]);
+  renderDashboard();
+  renderPostesTable();
+  renderDepRecent();
+  populatePosteSel();
+}
+
+async function loadBudget(){
+  const{data}=await sb.from('budget_projet').select('*').eq('chantier_id',currentChantier.id).single();
+  budgetData=data||null;
+  if(budgetData){
+    document.getElementById('setup-marche').value=budgetData.montant_marche||0;
+    document.getElementById('setup-budget').value=budgetData.budget_initial||0;
+    document.getElementById('setup-marge').value=budgetData.marge_cible_pct||10;
+    document.getElementById('setup-devise').value=budgetData.devise||'MAD';
+    document.getElementById('setup-contingence').value=budgetData.contingence||0;
+    document.getElementById('setup-notes').value=budgetData.notes||'';
+    document.getElementById('dep-devise').textContent=budgetData.devise||'MAD';
+  }
+}
+
+async function loadPostes(){
+  const{data}=await sb.from('postes_budget').select('*').eq('chantier_id',currentChantier.id).order('ordre');
+  postes=data||[];
+}
+
+async function loadDepenses(){
+  const{data}=await sb.from('depenses').select('*,postes_budget(nom,code)').eq('chantier_id',currentChantier.id).order('date_depense',{ascending:false});
+  depenses=data||[];
+}
+
+// ── FORMAT ────────────────────────────────────────────
+function fmt(n,devise='MAD'){
+  if(n===null||n===undefined||isNaN(n))return '—';
+  return new Intl.NumberFormat('fr-MA',{style:'currency',currency:devise==='MAD'?'MAD':devise,minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
+}
+function fmtShort(n){
+  if(!n||isNaN(n))return '—';
+  if(Math.abs(n)>=1000000)return (n/1000000).toFixed(1)+'M';
+  if(Math.abs(n)>=1000)return (n/1000).toFixed(0)+'K';
+  return Math.round(n).toString();
+}
+const devise=()=>budgetData?.devise||'MAD';
+
+// ── RENDER DASHBOARD ──────────────────────────────────
+function renderDashboard(){
+  const totalDep=depenses.filter(d=>d.type_cout==='reel').reduce((s,d)=>s+(+d.montant||0),0);
+  const totalEngage=depenses.filter(d=>d.type_cout==='engage').reduce((s,d)=>s+(+d.montant||0),0);
+
+  if(!budgetData){
+    document.getElementById('no-budget-banner').style.display='block';
+    document.getElementById('dashboard-content').style.display='none';
+    return;
+  }
+  document.getElementById('no-budget-banner').style.display='none';
+  document.getElementById('dashboard-content').style.display='block';
+
+  const marche=+budgetData.montant_marche||0;
+  const budget=+budgetData.budget_initial||0;
+  const RAF=postes.reduce((s,p)=>s+(+p.reste_a_faire||0),0);
+  const cfe=totalDep+totalEngage+RAF;
+  const margeEst=marche-cfe;
+  const margePct=marche>0?(margeEst/marche*100):0;
+  const reste=budget-totalDep;
+  const depPct=budget>0?(totalDep/budget*100):0;
+
+  document.getElementById('kpi-marche').textContent=fmtShort(marche);
+  document.getElementById('kpi-budget').textContent=fmtShort(budget);
+  document.getElementById('kpi-depenses').textContent=fmtShort(totalDep);
+  document.getElementById('kpi-depenses-pct').textContent=`${depPct.toFixed(0)}% du budget`;
+  document.getElementById('kpi-marge').textContent=fmtShort(margeEst);
+  document.getElementById('kpi-marge-pct').textContent=`${margePct.toFixed(1)}% taux marge`;
+  document.getElementById('kpi-reste').textContent=fmtShort(reste);
+
+  // Marge indicator
+  const mi=document.getElementById('marge-indicator');
+  const mv=document.getElementById('marge-val');
+  const ml=document.getElementById('marge-label');
+  const md=document.getElementById('marge-detail');
+  const margeCible=+budgetData.marge_cible_pct||10;
+  mv.textContent=`${margePct.toFixed(1)}%`;
+  ml.textContent=margePct>=margeCible?'Marge protégée':'Marge en dérive';
+  md.textContent=`Cible: ${margeCible}% · Estimée: ${margePct.toFixed(1)}% · ${fmt(margeEst,devise())} / Coût final estimé: ${fmt(cfe,devise())}`;
+  mi.className='marge-indicator '+(margePct>=margeCible?'positive':margePct>margeCible*0.5?'neutral':'negative');
+
+  // Alerts
+  const alerts=[];
+  if(depPct>100)alerts.push({type:'danger',msg:`Budget dépassé — dépenses réelles (${fmt(totalDep,devise())}) > budget (${fmt(budget,devise())})`});
+  else if(depPct>85)alerts.push({type:'warn',msg:`Attention — ${depPct.toFixed(0)}% du budget consommé`});
+  if(margePct<margeCible-3)alerts.push({type:'warn',msg:`Marge en dérive — estimée à ${margePct.toFixed(1)}% vs cible ${margeCible}%`});
+  if(totalEngage>0)alerts.push({type:'warn',msg:`${fmt(totalEngage,devise())} de coûts engagés non encore facturés`});
+  const ac=document.getElementById('alerts-container');
+  ac.innerHTML=alerts.map(a=>`<div class="alert-banner ${a.type}"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2L1 12h12L7 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 6v3M7 10.5v.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>${a.msg}</div>`).join('');
+
+  // Postes summary
+  renderPostesSummary(totalDep);
+
+  // Charts
+  renderCharts(totalDep);
+}
+
+function renderPostesSummary(totalDepGlobal){
+  const tbody=document.getElementById('postes-summary-tbody');
+  if(!postes.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--ink3);padding:20px;">Aucun poste défini — <a href="#" onclick="switchTab(\'setup\')" style="color:var(--accent);">configurer les postes →</a></td></tr>';return;}
+  tbody.innerHTML=postes.map(p=>{
+    const depPoste=depenses.filter(d=>d.poste_id===p.id&&d.type_cout==='reel').reduce((s,d)=>s+(+d.montant||0),0);
+    const budget=+p.budget_alloue||0;
+    const ecart=budget-depPoste;
+    const pct=budget>0?Math.min((depPoste/budget*100),150):0;
+    const status=pct>100?'danger':pct>85?'warn':'ok';
+    const barClass=pct>100?'prog-danger':pct>85?'prog-warn':'prog-ok';
+    return `<tr>
+      <td><strong>${p.code||''}</strong><br><span style="font-size:11px;color:var(--ink3);">${getCatLabel(p.categorie)}</span></td>
+      <td style="font-family:'DM Mono',monospace;">${fmt(budget,devise())}</td>
+      <td style="font-family:'DM Mono',monospace;">${fmt(depPoste,devise())}</td>
+      <td style="min-width:100px;">
+        <div class="prog-wrap"><div class="prog-fill ${barClass}" style="width:${Math.min(pct,100)}%;"></div></div>
+        <div style="font-size:10px;color:var(--ink3);margin-top:3px;">${pct.toFixed(0)}%</div>
+      </td>
+      <td style="font-family:'DM Mono',monospace;color:${ecart>=0?'var(--green)':'var(--red)'};">${ecart>=0?'+':''}${fmt(ecart,devise())}</td>
+      <td><span class="status-badge status-${status}">${status==='ok'?'Normal':status==='warn'?'Attention':'Dépassé'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCharts(totalDep){
+  // Chart 1: dépenses par semaine
+  const bySemaine={};
+  depenses.filter(d=>d.type_cout==='reel').forEach(d=>{
+    const key=`S${d.semaine||'?'}`;
+    bySemaine[key]=(bySemaine[key]||0)+(+d.montant||0);
+  });
+  const semLabels=Object.keys(bySemaine).slice(-10);
+  const semData=semLabels.map(k=>bySemaine[k]);
+
+  if(chartDep)chartDep.destroy();
+  chartDep=new Chart(document.getElementById('chartDepenses'),{
+    type:'bar',
+    data:{labels:semLabels,datasets:[{label:'Dépenses',data:semData,backgroundColor:'rgba(180,83,9,0.15)',borderColor:'#b45309',borderWidth:1.5,borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.parsed.y,devise())}}},
+      scales:{x:{grid:{display:false},ticks:{font:{family:'DM Mono',size:9},color:'#9a9a8e'}},
+              y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.03)'},ticks:{font:{family:'DM Mono',size:9},color:'#9a9a8e',callback:v=>fmtShort(v)}}}}
+  });
+
+  // Chart 2: budget vs dépenses par poste
+  if(chartPost)chartPost.destroy();
+  if(postes.length>0){
+    const postLabels=postes.map(p=>p.code||p.nom.slice(0,6));
+    const budgets=postes.map(p=>+p.budget_alloue||0);
+    const realDep=postes.map(p=>depenses.filter(d=>d.poste_id===p.id&&d.type_cout==='reel').reduce((s,d)=>s+(+d.montant||0),0));
+    chartPost=new Chart(document.getElementById('chartPostes'),{
+      type:'bar',
+      data:{labels:postLabels,datasets:[
+        {label:'Budget',data:budgets,backgroundColor:'rgba(30,64,175,0.1)',borderColor:'#1e40af',borderWidth:1.5,borderRadius:3},
+        {label:'Dépenses',data:realDep,backgroundColor:'rgba(180,83,9,0.2)',borderColor:'#b45309',borderWidth:1.5,borderRadius:3}
+      ]},
+      options:{responsive:true,plugins:{legend:{labels:{font:{family:'DM Sans',size:11},color:'#9a9a8e',boxWidth:14,padding:12}},tooltip:{callbacks:{label:ctx=>' '+ctx.dataset.label+': '+fmt(ctx.parsed.y,devise())}}},
+        scales:{x:{grid:{display:false},ticks:{font:{family:'DM Mono',size:9},color:'#9a9a8e'}},
+                y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.03)'},ticks:{font:{family:'DM Mono',size:9},color:'#9a9a8e',callback:v=>fmtShort(v)}}}}
+    });
+  }
+}
+
+// ── POSTES TABLE ──────────────────────────────────────
+const CATS=[
+  {v:'main_oeuvre',l:'Main d\'œuvre'},{v:'materiaux',l:'Matériaux'},{v:'sous_traitance',l:'Sous-traitance'},
+  {v:'engins',l:'Engins'},{v:'logistique',l:'Logistique'},{v:'etudes',l:'Études'},
+  {v:'hse',l:'HSE'},{v:'frais_chantier',l:'Frais chantier'},{v:'autre',l:'Autre'}
+];
+function getCatLabel(v){return CATS.find(c=>c.v===v)?.l||v;}
+function getCatOptions(selected='autre'){return CATS.map(c=>`<option value="${c.v}"${c.v===selected?' selected':''}>${c.l}</option>`).join('');}
+
+function renderPostesTable(){
+  const tbody=document.getElementById('postes-tbody');
+  tbody.innerHTML=postes.map((p,i)=>`
+    <tr id="poste-row-${p.id}">
+      <td><input type="text" value="${p.code||''}" id="pc-code-${p.id}" placeholder="MO" style="width:70px;"></td>
+      <td><input type="text" value="${p.nom||''}" id="pc-nom-${p.id}" placeholder="Ex: Main d'œuvre"></td>
+      <td><select id="pc-cat-${p.id}">${getCatOptions(p.categorie)}</select></td>
+      <td><input type="number" value="${p.budget_alloue||0}" id="pc-bud-${p.id}" min="0" step="1000" style="width:130px;"></td>
+      <td><input type="number" value="${p.reste_a_faire||0}" id="pc-raf-${p.id}" min="0" step="1000" style="width:130px;"></td>
+      <td><button class="btn-danger" onclick="deletePoste('${p.id}')">Supprimer</button></td>
+    </tr>`).join('');
+  if(!postes.length)tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--ink3);padding:16px;">Aucun poste — cliquez "Ajouter" ou utilisez les présélections</td></tr>';
+}
+
+function addPosteRow(){
+  const tempId='new-'+Date.now();
+  postes.push({id:tempId,code:'',nom:'',categorie:'autre',budget_alloue:0,reste_a_faire:0,_new:true});
+  renderPostesTable();
+  document.getElementById(`pc-nom-${tempId}`)?.focus();
+}
+
+async function addPreset(code,nom,cat){
+  if(!currentChantier||!budgetData){showToast('Configurez d\'abord le budget','error');switchTab('setup');return;}
+  const{data,error}=await sb.from('postes_budget').insert({
+    chantier_id:currentChantier.id,budget_projet_id:budgetData.id,
+    code,nom,categorie:cat,budget_alloue:0,reste_a_faire:0,ordre:postes.length
+  }).select().single();
+  if(!error&&data){postes.push(data);renderPostesTable();populatePosteSel();showToast(`Poste "${nom}" ajouté`);}
+}
+
+async function deletePoste(id){
+  if(!confirm('Supprimer ce poste ?'))return;
+  if(!id.startsWith('new-')){await sb.from('postes_budget').delete().eq('id',id);}
+  postes=postes.filter(p=>p.id!==id);
+  renderPostesTable();populatePosteSel();renderDashboard();showToast('Poste supprimé');
+}
+
+async function savePostes(){
+  if(!budgetData){showToast('Configurez d\'abord le budget','error');return;}
+  let saved=0;
+  for(const p of postes){
+    const vals={
+      chantier_id:currentChantier.id,budget_projet_id:budgetData.id,
+      code:document.getElementById(`pc-code-${p.id}`)?.value||p.code||'',
+      nom:document.getElementById(`pc-nom-${p.id}`)?.value||p.nom||'',
+      categorie:document.getElementById(`pc-cat-${p.id}`)?.value||p.categorie||'autre',
+      budget_alloue:+document.getElementById(`pc-bud-${p.id}`)?.value||0,
+      reste_a_faire:+document.getElementById(`pc-raf-${p.id}`)?.value||0,
+      ordre:postes.indexOf(p),
+    };
+    if(p._new){
+      const{data}=await sb.from('postes_budget').insert(vals).select().single();
+      if(data){p.id=data.id;delete p._new;Object.assign(p,data);}
+    }else{
+      await sb.from('postes_budget').update(vals).eq('id',p.id);
+      Object.assign(p,vals);
+    }
+    saved++;
+  }
+  populatePosteSel();renderDashboard();renderPostesTable();
+  showToast(`${saved} poste(s) enregistré(s) ✓`);
+}
+
+// ── BUDGET SETUP ──────────────────────────────────────
+async function saveBudgetSetup(){
+  if(!currentChantier){showToast('Sélectionnez un chantier','error');return;}
+  const vals={
+    chantier_id:currentChantier.id,
+    montant_marche:+document.getElementById('setup-marche').value||0,
+    budget_initial:+document.getElementById('setup-budget').value||0,
+    marge_cible_pct:+document.getElementById('setup-marge').value||10,
+    devise:document.getElementById('setup-devise').value,
+    contingence:+document.getElementById('setup-contingence').value||0,
+    notes:document.getElementById('setup-notes').value,
+    updated_at:new Date().toISOString(),
+  };
+  if(budgetData){
+    const{error}=await sb.from('budget_projet').update(vals).eq('id',budgetData.id);
+    if(!error){Object.assign(budgetData,vals);showToast('Budget mis à jour ✓');}
+    else showToast('Erreur sauvegarde','error');
+  }else{
+    const{data,error}=await sb.from('budget_projet').insert(vals).select().single();
+    if(!error&&data){budgetData=data;showToast('Budget créé ✓');}
+    else showToast('Erreur création','error');
+  }
+  document.getElementById('dep-devise').textContent=vals.devise;
+  renderDashboard();
+}
+
+// ── DEPENSES ──────────────────────────────────────────
+function populatePosteSel(){
+  const sel=document.getElementById('dep-poste');
+  const filt=document.getElementById('filter-poste');
+  const opts=postes.map(p=>`<option value="${p.id}">${p.code?p.code+' — ':''} ${p.nom}</option>`).join('');
+  sel.innerHTML='<option value="">— Sélectionner un poste —</option>'+opts;
+  filt.innerHTML='<option value="">Tous les postes</option>'+opts;
+}
+
+function getWeekNumber(date){
+  const d=new Date(date);const jan1=new Date(d.getFullYear(),0,1);
+  return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+}
+
+async function saveDep(){
+  if(!currentChantier){showToast('Sélectionnez un chantier','error');return;}
+  const date=document.getElementById('dep-date').value;
+  const desc=document.getElementById('dep-desc').value.trim();
+  const montant=+document.getElementById('dep-montant').value;
+  if(!date||!desc||!montant){showToast('Remplissez date, description et montant','error');return;}
+  const posteId=document.getElementById('dep-poste').value||null;
+  const type=document.getElementById('dep-type').value;
+  const d=new Date(date);
+  const vals={
+    chantier_id:currentChantier.id,
+    auteur_id:currentUser.id,
+    date_depense:date,
+    semaine:getWeekNumber(date),
+    annee:d.getFullYear(),
+    description:desc,
+    fournisseur:document.getElementById('dep-fourn').value||null,
+    justificatif:document.getElementById('dep-ref').value||null,
+    poste_id:posteId||null,
+    type_cout:type,
+    montant,
+  };
+  const{data,error}=await sb.from('depenses').insert(vals).select('*,postes_budget(nom,code)').single();
+  if(error){showToast('Erreur enregistrement','error');return;}
+  depenses.unshift(data);
+  document.getElementById('dep-desc').value='';
+  document.getElementById('dep-fourn').value='';
+  document.getElementById('dep-ref').value='';
+  document.getElementById('dep-montant').value='';
+  document.getElementById('dep-date').valueAsDate=new Date();
+  renderDepRecent();renderDashboard();
+  showToast(`Dépense ${fmt(montant,devise())} enregistrée ✓`);
+}
+
+function renderDepRecent(){
+  const tbody=document.getElementById('dep-recent-tbody');
+  const recent=depenses.slice(0,10);
+  if(!recent.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--ink3);padding:20px;">Aucune dépense enregistrée</td></tr>';return;}
+  tbody.innerHTML=recent.map(d=>`
+    <tr>
+      <td class="date">${d.date_depense}</td>
+      <td>${d.description}</td>
+      <td style="color:var(--ink3);">${d.fournisseur||'—'}</td>
+      <td><span style="font-size:11px;background:var(--cream2);padding:2px 8px;border-radius:4px;">${d.postes_budget?.code||'—'}</span></td>
+      <td><span class="status-badge ${d.type_cout==='reel'?'status-ok':d.type_cout==='engage'?'status-warn':'status-badge'}" style="${d.type_cout==='provision'?'background:var(--blue-bg);color:var(--blue);':''}">${d.type_cout==='reel'?'Réel':d.type_cout==='engage'?'Engagé':'Provision'}</span></td>
+      <td class="montant">${fmt(+d.montant,devise())}</td>
+      <td><button class="btn-danger" onclick="deleteDep('${d.id}')">×</button></td>
+    </tr>`).join('');
+}
+
+async function deleteDep(id){
+  if(!confirm('Supprimer cette dépense ?'))return;
+  await sb.from('depenses').delete().eq('id',id);
+  depenses=depenses.filter(d=>d.id!==id);
+  renderDepRecent();renderDashboard();loadHistorique();
+  showToast('Dépense supprimée');
+}
+
+async function loadHistorique(){
+  const filtPoste=document.getElementById('filter-poste')?.value||'';
+  const filtType=document.getElementById('filter-type')?.value||'';
+  let q=sb.from('depenses').select('*,postes_budget(nom,code)').eq('chantier_id',currentChantier.id).order('date_depense',{ascending:false});
+  if(filtPoste)q=q.eq('poste_id',filtPoste);
+  if(filtType)q=q.eq('type_cout',filtType);
+  const{data}=await q;
+  const rows=data||[];
+  const total=rows.reduce((s,d)=>s+(+d.montant||0),0);
+  const tbody=document.getElementById('historique-tbody');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--ink3);padding:20px;">Aucune dépense</td></tr>';document.getElementById('historique-total').style.display='none';return;}
+  tbody.innerHTML=rows.map(d=>`
+    <tr>
+      <td class="date">${d.date_depense}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3);">S${d.semaine||'?'}</td>
+      <td>${d.description}</td>
+      <td style="color:var(--ink3);">${d.fournisseur||'—'}</td>
+      <td><span style="font-size:11px;">${d.postes_budget?.nom||'—'}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3);">${d.justificatif||'—'}</td>
+      <td><span class="status-badge ${d.type_cout==='reel'?'status-ok':'status-warn'}">${d.type_cout==='reel'?'Réel':d.type_cout==='engage'?'Engagé':'Provision'}</span></td>
+      <td class="montant">${fmt(+d.montant,devise())}</td>
+    </tr>`).join('');
+  const totEl=document.getElementById('historique-total');
+  totEl.textContent=`Total : ${fmt(total,devise())}`;
+  totEl.style.display='block';
+}
+
+// ── TABS ─────────────────────────────────────────────
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const ids=['dashboard','postes','depenses','historique','setup'];
+    t.classList.toggle('active',ids[i]===id);
+  });
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='historique')loadHistorique();
+}
+
+// ── TOAST ─────────────────────────────────────────────
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+</script>
+</body>
+</html>
