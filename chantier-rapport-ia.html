@@ -3,392 +3,373 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Progev — Rapport de chantier</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<title>Progev — Rapport journalier</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root {
-    --bg: #0a0e0a;
-    --bg2: #111711;
-    --bg3: #182018;
-    --accent: #4dff7c;
-    --accent2: #00c44f;
-    --accent-dim: rgba(77,255,124,0.12);
-    --accent-glow: rgba(77,255,124,0.25);
-    --text: #e8f0e8;
-    --text2: #8fa88f;
-    --text3: #4a614a;
-    --border: rgba(77,255,124,0.15);
-    --border2: rgba(77,255,124,0.08);
-    --danger: #ff6b4a;
-    --warn: #ffb84a;
-    --radius: 12px;
-  }
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --cream:#faf9f6;--cream2:#f3f0eb;--cream3:#ede9e2;
+  --ink:#1a1a14;--ink2:#4a4a40;--ink3:#9a9a8e;
+  --border:#e2ddd6;--border2:#ccc9c0;
+  --accent:#b45309;--accent-light:#fef3c7;
+  --white:#ffffff;
+  --green:#166534;--green-light:#dcfce7;
+  --red:#991b1b;--red-light:#fef2f2;
+  --amber:#92400e;--amber-light:#fffbeb;
+  --radius:10px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;}
 
-  * { margin:0; padding:0; box-sizing:border-box; }
+/* TOPBAR */
+.topbar{
+  background:var(--white);
+  border-bottom:1px solid var(--border);
+  padding:0 40px;height:58px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+}
+.topbar-left{display:flex;align-items:center;gap:28px;}
+.logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:600;color:var(--ink);
+  text-decoration:none;letter-spacing:-0.3px;
+}
+.logo span{color:var(--accent);}
+.topbar-nav{display:flex;gap:0;}
+.nav-item{
+  padding:0 16px;height:58px;
+  display:flex;align-items:center;
+  font-size:13px;color:var(--ink3);
+  text-decoration:none;border-bottom:2px solid transparent;
+  transition:all 0.15s;
+}
+.nav-item:hover{color:var(--ink);}
+.nav-item.active{color:var(--accent);border-bottom-color:var(--accent);}
+.topbar-right{display:flex;align-items:center;gap:14px;}
+.user-chip{
+  display:flex;align-items:center;gap:8px;
+  background:var(--cream2);border:1px solid var(--border);
+  border-radius:20px;padding:5px 12px;
+}
+.user-avatar{
+  width:22px;height:22px;border-radius:50%;
+  background:var(--ink);color:var(--white);
+  font-size:10px;font-weight:600;
+  display:grid;place-items:center;
+}
+.user-name{font-size:12px;font-weight:500;}
+.btn-logout{
+  font-size:12px;color:var(--ink3);
+  background:transparent;border:1px solid var(--border);
+  border-radius:6px;padding:5px 12px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all 0.15s;
+}
+.btn-logout:hover{border-color:var(--border2);color:var(--ink);}
+.chantier-sel{
+  background:var(--cream2);border:1px solid var(--border);
+  border-radius:8px;padding:6px 12px;font-family:'DM Sans',sans-serif;
+  font-size:13px;color:var(--ink);outline:none;max-width:220px;
+}
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-size: 15px;
-    line-height: 1.6;
-  }
+/* CONTENT */
+.content{max-width:860px;margin:0 auto;padding:36px 24px 80px;}
+.page-header{margin-bottom:32px;}
+.page-eyebrow{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:8px;
+}
+.page-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:36px;font-weight:600;color:var(--ink);
+  letter-spacing:-0.5px;margin-bottom:6px;
+}
+.page-title em{color:var(--accent);font-style:italic;}
+.page-sub{font-size:14px;color:var(--ink3);}
 
-  /* Grid background */
-  body::before {
-    content:'';
-    position:fixed; inset:0;
-    background-image:
-      linear-gradient(rgba(77,255,124,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(77,255,124,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events:none; z-index:0;
-  }
+/* SECTIONS */
+.section{margin-bottom:28px;}
+.section-label{
+  font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:14px;
+  padding-bottom:8px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
 
-  .wrapper { position:relative; z-index:1; max-width:860px; margin:0 auto; padding:40px 24px 80px; }
+/* FIELDS */
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-size:11px;letter-spacing:0.5px;color:var(--ink3);font-weight:500;}
+.field input,.field select,.field textarea{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--radius);padding:11px 14px;
+  font-family:'DM Sans',sans-serif;font-size:14px;
+  color:var(--ink);outline:none;transition:border-color 0.2s;width:100%;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+.field textarea{resize:vertical;min-height:88px;}
+.field input::placeholder,.field textarea::placeholder{color:var(--ink3);}
 
-  /* Header */
-  header { display:flex; align-items:center; justify-content:space-between; margin-bottom:48px; padding-bottom:24px; border-bottom:1px solid var(--border); }
-  .logo { display:flex; align-items:center; gap:10px; }
-  .logo-mark { width:32px; height:32px; background:var(--accent); border-radius:6px; display:grid; place-items:center; }
-  .logo-mark svg { width:18px; height:18px; }
-  .logo-name { font-family:'Syne',sans-serif; font-weight:800; font-size:18px; letter-spacing:-0.5px; color:var(--text); }
-  .logo-name span { color:var(--accent); }
-  .badge { font-family:'DM Mono',monospace; font-size:11px; color:var(--accent2); background:var(--accent-dim); border:1px solid var(--border); padding:4px 10px; border-radius:20px; }
+/* PROGRESS */
+.prog-wrap{display:flex;align-items:center;gap:12px;}
+.prog-wrap input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:3px;background:var(--cream3);border:none;border-radius:2px;padding:0;
+}
+.prog-wrap input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;
+  background:var(--accent);border-radius:50%;cursor:pointer;
+  border:2px solid var(--white);box-shadow:0 1px 4px rgba(180,83,9,0.3);
+}
+.prog-val{
+  font-family:'Cormorant Garamond',serif;font-size:24px;
+  font-weight:600;color:var(--accent);min-width:52px;text-align:right;
+}
 
-  /* Page title */
-  .page-title { margin-bottom:36px; }
-  .page-title h1 { font-family:'Syne',sans-serif; font-weight:800; font-size:32px; letter-spacing:-1px; line-height:1.1; margin-bottom:8px; }
-  .page-title h1 span { color:var(--accent); }
-  .page-title p { color:var(--text2); font-size:14px; }
+/* STATUS CARDS */
+.status-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.status-card{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;
+}
+.status-card label{
+  font-size:10px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--ink3);display:block;margin-bottom:6px;
+}
+.status-card input,.status-card select{
+  background:transparent;border:none;padding:0;
+  font-family:'Cormorant Garamond',serif;font-size:24px;
+  font-weight:600;color:var(--accent);width:100%;outline:none;
+}
+.status-card .unit{font-size:11px;color:var(--ink3);margin-top:2px;}
 
-  /* Sections */
-  .section { margin-bottom:32px; }
-  .section-label {
-    font-family:'DM Mono',monospace; font-size:11px; font-weight:500;
-    color:var(--accent2); text-transform:uppercase; letter-spacing:1.5px;
-    margin-bottom:14px; display:flex; align-items:center; gap:8px;
-  }
-  .section-label::after { content:''; flex:1; height:1px; background:var(--border2); }
+/* HSE TOGGLES */
+.toggle-group{display:flex;flex-wrap:wrap;gap:7px;}
+.toggle-btn{
+  padding:7px 14px;border-radius:20px;font-size:12px;font-weight:500;
+  border:1px solid var(--border);background:var(--white);
+  color:var(--ink3);cursor:pointer;transition:all 0.15s;
+  font-family:'DM Sans',sans-serif;
+}
+.toggle-btn:hover{border-color:var(--border2);color:var(--ink);}
+.toggle-btn.active{background:var(--cream2);border-color:var(--accent);color:var(--accent);}
+.toggle-btn.danger.active{background:var(--red-light);border-color:var(--red);color:var(--red);}
+.toggle-btn.warn.active{background:var(--amber-light);border-color:var(--accent);color:var(--amber);}
 
-  /* Grid layouts */
-  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+/* GENERATE BUTTON */
+.btn-generate{
+  width:100%;padding:17px;border-radius:var(--radius);
+  background:var(--ink);color:var(--white);
+  font-family:'Cormorant Garamond',serif;font-weight:600;
+  font-size:18px;letter-spacing:0.2px;border:none;cursor:pointer;
+  transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-top:10px;
+}
+.btn-generate:hover{background:var(--accent);}
+.btn-generate:disabled{opacity:0.4;cursor:not-allowed;}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:none;}
+.btn-generate.loading .spinner{display:block;}
+.btn-generate.loading .btn-text{display:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-  /* Form controls */
-  .field { display:flex; flex-direction:column; gap:6px; }
-  label { font-size:12px; color:var(--text2); font-weight:500; letter-spacing:0.3px; }
+/* OUTPUT */
+#output-section{margin-top:40px;opacity:0;transform:translateY(16px);transition:all 0.35s ease;pointer-events:none;}
+#output-section.visible{opacity:1;transform:translateY(0);pointer-events:auto;}
 
-  input[type=text], input[type=date], input[type=number], select, textarea {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    padding: 11px 14px;
-    outline: none;
-    transition: border-color 0.2s, background 0.2s;
-    width: 100%;
-  }
-  input:focus, select:focus, textarea:focus {
-    border-color: var(--accent2);
-    background: var(--bg3);
-  }
-  textarea { resize: vertical; min-height: 90px; }
-  select option { background: var(--bg2); }
+/* ALERTS */
+#alerts-strip{display:none;margin-bottom:16px;}
+.alert-item{
+  padding:11px 14px;border-radius:8px;font-size:13px;margin-bottom:6px;
+  display:flex;align-items:center;gap:9px;
+}
+.alert-item.danger{background:var(--red-light);border:1px solid #fca5a5;color:var(--red);}
+.alert-item.warn{background:var(--amber-light);border:1px solid #fcd34d;color:var(--amber);}
+.alert-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:currentColor;}
 
-  /* Progress input */
-  .progress-wrap { display:flex; align-items:center; gap:12px; }
-  .progress-wrap input[type=range] {
-    flex:1; -webkit-appearance:none; appearance:none;
-    height:4px; background:var(--bg3); border-radius:2px; border:none; padding:0;
-  }
-  .progress-wrap input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance:none; width:18px; height:18px;
-    background:var(--accent); border-radius:50%; cursor:pointer;
-    box-shadow:0 0 10px var(--accent-glow);
-  }
-  .progress-val {
-    font-family:'DM Mono',monospace; font-size:16px; font-weight:500;
-    color:var(--accent); min-width:44px; text-align:right;
-  }
+/* OUTPUT CARD */
+.output-card{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+}
+.output-header{
+  padding:18px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.output-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:20px;font-weight:600;color:var(--ink);
+}
+.output-meta{font-size:12px;color:var(--ink3);margin-top:2px;font-family:'DM Mono',monospace;}
+.output-body{padding:24px;}
+#report-text{
+  font-family:'DM Mono',monospace;font-size:12.5px;
+  line-height:1.9;color:var(--ink);white-space:pre-wrap;word-break:break-word;
+}
+.action-row{
+  display:flex;gap:10px;flex-wrap:wrap;
+  margin-top:20px;padding-top:20px;
+  border-top:1px solid var(--border);
+}
+.btn-action{
+  flex:1;min-width:130px;padding:10px 16px;border-radius:8px;
+  font-size:12px;font-weight:500;border:1px solid var(--border);
+  background:var(--cream2);color:var(--ink2);cursor:pointer;
+  transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:7px;
+  font-family:'DM Sans',sans-serif;
+}
+.btn-action:hover{border-color:var(--accent);color:var(--accent);}
+.btn-action.primary{background:var(--accent);border-color:var(--accent);color:var(--white);}
+.btn-action.primary:hover{background:#92400e;}
+.btn-action svg{width:14px;height:14px;flex-shrink:0;}
+.btn-copy{
+  padding:7px 16px;border-radius:8px;font-size:12px;font-weight:500;
+  border:1px solid var(--border);background:var(--cream2);color:var(--ink3);
+  cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif;
+}
+.btn-copy:hover{border-color:var(--accent);color:var(--accent);}
 
-  /* HSE toggles */
-  .toggle-group { display:flex; flex-wrap:wrap; gap:8px; }
-  .toggle-btn {
-    padding:8px 14px; border-radius:8px; font-size:13px; font-weight:500;
-    border:1px solid var(--border); background:var(--bg2);
-    color:var(--text2); cursor:pointer; transition:all 0.15s;
-    font-family:'DM Sans',sans-serif;
-  }
-  .toggle-btn:hover { border-color:var(--accent2); color:var(--text); }
-  .toggle-btn.active { background:var(--accent-dim); border-color:var(--accent2); color:var(--accent); }
-  .toggle-btn.danger.active { background:rgba(255,107,74,0.12); border-color:var(--danger); color:var(--danger); }
-  .toggle-btn.warn.active { background:rgba(255,184,74,0.12); border-color:var(--warn); color:var(--warn); }
+/* TOAST */
+.toast{
+  position:fixed;bottom:28px;right:28px;z-index:999;
+  padding:11px 20px;border-radius:8px;font-size:13px;font-weight:500;
+  border:1px solid;transform:translateY(60px);opacity:0;
+  transition:all 0.3s ease;pointer-events:none;
+}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{background:var(--green-light);border-color:#86efac;color:var(--green);}
+.toast.error{background:var(--red-light);border-color:#fca5a5;color:var(--red);}
 
-  /* Status row */
-  .status-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
-  .status-card {
-    background:var(--bg2); border:1px solid var(--border2);
-    border-radius:var(--radius); padding:14px;
-    display:flex; flex-direction:column; gap:4px;
-  }
-  .status-card label { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.8px; }
-  .status-card input { background:transparent; border:none; padding:0; font-family:'DM Mono',monospace; font-size:20px; font-weight:500; color:var(--accent); width:100%; }
-  .status-card input:focus { outline:none; }
-  .status-card .unit { font-size:11px; color:var(--text3); }
+/* EMAIL MODAL */
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(26,26,20,0.5);align-items:center;justify-content:center;padding:24px;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:14px;padding:28px;width:100%;max-width:460px;
+}
+.modal h3{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:5px;}
+.modal p{font-size:13px;color:var(--ink3);margin-bottom:20px;line-height:1.5;}
+.modal .field{margin-bottom:14px;}
+.modal-actions{display:flex;gap:10px;margin-top:20px;}
+.btn-cancel{
+  flex:1;padding:11px;border-radius:8px;font-size:13px;
+  border:1px solid var(--border);background:transparent;color:var(--ink3);
+  cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;
+}
+.btn-cancel:hover{border-color:var(--border2);}
+.btn-send{
+  flex:2;padding:11px;border-radius:8px;font-size:14px;font-weight:600;
+  border:none;background:var(--ink);color:var(--white);
+  cursor:pointer;font-family:'Cormorant Garamond',serif;transition:all 0.15s;
+}
+.btn-send:hover{background:var(--accent);}
 
-  /* Generate button */
-  .btn-generate {
-    width:100%; padding:18px; border-radius:var(--radius);
-    background:var(--accent); color:#0a0e0a;
-    font-family:'Syne',sans-serif; font-weight:700; font-size:16px; letter-spacing:-0.3px;
-    border:none; cursor:pointer; transition:all 0.2s;
-    display:flex; align-items:center; justify-content:center; gap:10px;
-    margin-top:12px;
-  }
-  .btn-generate:hover { background:#6fff96; box-shadow:0 0 30px var(--accent-glow); }
-  .btn-generate:disabled { opacity:0.5; cursor:not-allowed; }
-  .btn-generate .spinner {
-    width:18px; height:18px; border:2px solid rgba(0,0,0,0.2);
-    border-top-color:#0a0e0a; border-radius:50%;
-    animation:spin 0.7s linear infinite; display:none;
-  }
-  .btn-generate.loading .spinner { display:block; }
-  .btn-generate.loading .btn-text { display:none; }
-  @keyframes spin { to { transform:rotate(360deg); } }
-
-  /* Output */
-  #output-section {
-    margin-top:48px; opacity:0; transform:translateY(20px);
-    transition:all 0.4s ease; pointer-events:none;
-  }
-  #output-section.visible { opacity:1; transform:translateY(0); pointer-events:auto; }
-
-  .output-card {
-    background:var(--bg2); border:1px solid var(--border);
-    border-radius:16px; overflow:hidden;
-  }
-  .output-header {
-    padding:20px 24px; border-bottom:1px solid var(--border2);
-    display:flex; align-items:center; justify-content:space-between;
-  }
-  .output-header-left { display:flex; flex-direction:column; gap:3px; }
-  .output-title { font-family:'Syne',sans-serif; font-weight:700; font-size:16px; }
-  .output-meta { font-family:'DM Mono',monospace; font-size:11px; color:var(--text3); }
-  .btn-copy {
-    padding:8px 16px; border-radius:8px; font-size:12px; font-weight:500;
-    border:1px solid var(--border); background:transparent; color:var(--text2);
-    cursor:pointer; transition:all 0.15s; font-family:'DM Sans',sans-serif;
-  }
-  .btn-copy:hover { border-color:var(--accent2); color:var(--accent); }
-
-  .output-body { padding:24px; }
-  #report-text {
-    font-family:'DM Mono',monospace; font-size:13px; line-height:1.8;
-    color:var(--text); white-space:pre-wrap; word-break:break-word;
-  }
-
-  /* Alerts strip */
-  #alerts-strip { display:none; margin-bottom:20px; }
-  .alert-item {
-    padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:6px;
-    display:flex; align-items:center; gap:8px;
-  }
-  .alert-item.danger { background:rgba(255,107,74,0.1); border:1px solid rgba(255,107,74,0.3); color:var(--danger); }
-  .alert-item.warn { background:rgba(255,184,74,0.1); border:1px solid rgba(255,184,74,0.3); color:var(--warn); }
-  .alert-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-  .alert-item.danger .alert-dot { background:var(--danger); }
-  .alert-item.warn .alert-dot { background:var(--warn); }
-
-  /* Action buttons row */
-  .action-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; padding-top:16px; border-top:1px solid var(--border2); }
-  .btn-action {
-    flex:1; min-width:140px; padding:11px 16px; border-radius:10px;
-    font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500;
-    border:1px solid var(--border); background:var(--bg3); color:var(--text2);
-    cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; gap:7px;
-  }
-  .btn-action:hover { border-color:var(--accent2); color:var(--accent); background:var(--accent-dim); }
-  .btn-action.primary { background:var(--accent-dim); border-color:var(--accent2); color:var(--accent); }
-  .btn-action svg { width:15px; height:15px; flex-shrink:0; }
-
-  /* Email modal */
-  .modal-overlay {
-    display:none; position:fixed; inset:0; z-index:100;
-    background:rgba(0,0,0,0.7); align-items:center; justify-content:center; padding:24px;
-  }
-  .modal-overlay.open { display:flex; }
-  .modal {
-    background:var(--bg2); border:1px solid var(--border);
-    border-radius:16px; padding:28px; width:100%; max-width:480px;
-  }
-  .modal h3 { font-family:'Syne',sans-serif; font-weight:700; font-size:18px; margin-bottom:6px; }
-  .modal p { color:var(--text2); font-size:13px; margin-bottom:20px; line-height:1.5; }
-  .modal .field { margin-bottom:14px; }
-  .modal-actions { display:flex; gap:10px; margin-top:20px; }
-  .btn-cancel {
-    flex:1; padding:11px; border-radius:10px; font-size:14px; font-weight:500;
-    border:1px solid var(--border); background:transparent; color:var(--text2);
-    cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s;
-  }
-  .btn-cancel:hover { border-color:var(--text3); }
-  .btn-send {
-    flex:2; padding:11px; border-radius:10px; font-size:14px; font-weight:600;
-    border:none; background:var(--accent); color:#0a0e0a;
-    cursor:pointer; font-family:'Syne',sans-serif; transition:all 0.15s;
-  }
-  .btn-send:hover { background:#6fff96; }
-  .btn-send:disabled { opacity:0.5; cursor:not-allowed; }
-
-  /* Toast */
-  .toast {
-    position:fixed; bottom:28px; right:28px; z-index:200;
-    padding:12px 20px; border-radius:10px; font-size:13px; font-weight:500;
-    border:1px solid; transform:translateY(80px); opacity:0;
-    transition:all 0.3s ease; pointer-events:none;
-  }
-  .toast.show { transform:translateY(0); opacity:1; }
-  .toast.success { background:rgba(77,255,124,0.12); border-color:var(--accent2); color:var(--accent); }
-  .toast.error { background:rgba(255,107,74,0.12); border-color:var(--danger); color:var(--danger); }
-
-  @media(max-width:600px) {
-    .grid-2,.grid-3 { grid-template-columns:1fr; }
-    .status-cards { grid-template-columns:1fr 1fr; }
-    .page-title h1 { font-size:24px; }
-    .action-row { flex-direction:column; }
-  }
+@media(max-width:640px){
+  .grid-2,.grid-3{grid-template-columns:1fr;}
+  .status-cards{grid-template-columns:1fr 1fr;}
+  .topbar{padding:0 16px;}
+  .content{padding:24px 16px 60px;}
+  .topbar-nav{display:none;}
+}
 </style>
 </head>
 <body>
-<div class="wrapper">
 
-  <header>
-    <div class="logo">
-      <div class="logo-mark">
-        <svg viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="6" rx="1.5" fill="#0a0e0a"/><rect x="10" y="2" width="6" height="6" rx="1.5" fill="#0a0e0a"/><rect x="2" y="10" width="6" height="6" rx="1.5" fill="#0a0e0a"/><circle cx="13" cy="13" r="3" fill="#0a0e0a"/></svg>
-      </div>
-      <span class="logo-name">Pro<span>gev</span></span>
+<nav class="topbar">
+  <div class="topbar-left">
+    <a href="dashboard-direction.html" class="logo">Pro<span>gev</span></a>
+    <div class="topbar-nav">
+      <a href="dashboard-direction.html" class="nav-item">Dashboard</a>
+      <a href="chantier-rapport-ia.html" class="nav-item active">Rapport</a>
+      <a href="#" class="nav-item">Budget</a>
+      <a href="#" class="nav-item">HSE</a>
     </div>
-
-    <!-- Sélecteur chantier -->
-    <select id="chantier-select" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 12px;outline:none;max-width:220px;"></select>
-
-    <!-- User info + logout -->
-    <div style="display:flex;align-items:center;gap:10px;">
-      <div style="text-align:right;">
-        <div id="user-name" style="font-size:13px;font-weight:600;color:var(--text);">—</div>
-        <div id="org-name" style="font-size:11px;color:var(--text3);">—</div>
-      </div>
-      <button onclick="logout()" style="background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:12px;padding:6px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;">
-        Déconnexion
-      </button>
+  </div>
+  <div class="topbar-right">
+    <select id="chantier-select" class="chantier-sel"></select>
+    <div class="user-chip">
+      <div class="user-avatar" id="user-avatar">—</div>
+      <span class="user-name" id="user-name">—</span>
     </div>
-    <span class="badge">Module 1 · Rapport journalier</span>
-  </header>
+    <button class="btn-logout" onclick="logout()">Déconnexion</button>
+  </div>
+</nav>
 
-  <div class="page-title">
-    <h1>Rapport de chantier <span>IA</span></h1>
-    <p>Remplis le formulaire — l'IA génère un rapport complet prêt à envoyer à la direction</p>
+<div class="content">
+  <div class="page-header">
+    <div class="page-eyebrow">Module 1</div>
+    <div class="page-title">Rapport <em>journalier</em></div>
+    <div class="page-sub">Remplis le formulaire — l'IA génère un rapport complet en 12 sections prêt à envoyer</div>
   </div>
 
-  <!-- SECTION 1 : Identification -->
+  <!-- Identification -->
   <div class="section">
-    <div class="section-label">Identification du chantier</div>
+    <div class="section-label"><span>Identification du chantier</span></div>
     <div class="grid-2">
-      <div class="field">
-        <label>Nom du chantier / projet</label>
-        <input type="text" id="nom_chantier" placeholder="Ex : Ligne 60kV Berrechid – Settat lot 3">
-      </div>
-      <div class="field">
-        <label>Date du rapport</label>
-        <input type="date" id="date_rapport">
-      </div>
-      <div class="field">
-        <label>Chef de projet</label>
-        <input type="text" id="chef_projet" placeholder="Votre nom">
-      </div>
-      <div class="field">
-        <label>Chef de chantier</label>
-        <input type="text" id="chef_chantier" placeholder="Nom du chef de chantier terrain">
-      </div>
+      <div class="field"><label>Nom du chantier / projet</label><input type="text" id="nom_chantier" placeholder="Ex: Ligne 60kV Berrechid – Settat lot 3"></div>
+      <div class="field"><label>Date du rapport</label><input type="date" id="date_rapport"></div>
+      <div class="field"><label>Chef de projet</label><input type="text" id="chef_projet" placeholder="Votre nom"></div>
+      <div class="field"><label>Chef de chantier</label><input type="text" id="chef_chantier" placeholder="Nom du chef de chantier terrain"></div>
     </div>
   </div>
 
-  <!-- SECTION 2 : Avancement -->
+  <!-- Avancement -->
   <div class="section">
-    <div class="section-label">Avancement global</div>
-    <div class="field" style="margin-bottom:16px">
+    <div class="section-label"><span>Avancement global</span></div>
+    <div class="field" style="margin-bottom:16px;">
       <label>Avancement réel du chantier</label>
-      <div class="progress-wrap">
+      <div class="prog-wrap">
         <input type="range" id="avancement" min="0" max="100" value="0" oninput="document.getElementById('av_val').textContent=this.value+'%'">
-        <span class="progress-val" id="av_val">0%</span>
+        <span class="prog-val" id="av_val">0%</span>
       </div>
     </div>
     <div class="status-cards">
-      <div class="status-card">
-        <label>Prévu aujourd'hui</label>
-        <input type="text" id="prevu" placeholder="ex: 65%">
-        <span class="unit">% planifié</span>
-      </div>
-      <div class="status-card">
-        <label>Effectif présent</label>
-        <input type="number" id="effectif" placeholder="0">
-        <span class="unit">personnes</span>
-      </div>
-      <div class="status-card">
-        <label>Engins actifs</label>
-        <input type="number" id="engins" placeholder="0">
-        <span class="unit">matériels</span>
-      </div>
+      <div class="status-card"><label>Prévu ce jour</label><input type="text" id="prevu" placeholder="65%"><span class="unit">% planifié</span></div>
+      <div class="status-card"><label>Effectif présent</label><input type="number" id="effectif" placeholder="0"><span class="unit">personnes</span></div>
+      <div class="status-card"><label>Engins actifs</label><input type="number" id="engins" placeholder="0"><span class="unit">matériels</span></div>
       <div class="status-card">
         <label>Météo</label>
-        <select id="meteo" style="font-size:13px;padding:6px 10px;background:transparent;border:none;color:var(--accent)">
-          <option value="Ensoleillé">☀️ Ensoleillé</option>
-          <option value="Nuageux">⛅ Nuageux</option>
-          <option value="Pluvieux">🌧️ Pluvieux</option>
-          <option value="Vent fort">💨 Vent fort</option>
-          <option value="Orage">⛈️ Orage</option>
+        <select id="meteo">
+          <option value="Ensoleillé">Ensoleillé</option>
+          <option value="Nuageux">Nuageux</option>
+          <option value="Pluvieux">Pluvieux</option>
+          <option value="Vent fort">Vent fort</option>
+          <option value="Orage">Orage</option>
         </select>
       </div>
     </div>
   </div>
 
-  <!-- SECTION 3 : Travaux du jour -->
+  <!-- Travaux -->
   <div class="section">
-    <div class="section-label">Travaux réalisés aujourd'hui</div>
+    <div class="section-label"><span>Travaux du jour</span></div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Activités réalisées aujourd'hui</label>
+      <textarea id="travaux_realises" placeholder="Fouilles, fondations, montage pylônes, déroulage câble, raccordements..."></textarea>
+    </div>
     <div class="field">
-      <textarea id="travaux_realises" placeholder="Décris les activités réalisées aujourd'hui sur le chantier (fouilles, fondations, montage pylônes, déroulage câble, raccordements...)"></textarea>
-    </div>
-    <div class="field" style="margin-top:12px">
       <label>Travaux prévus demain</label>
-      <textarea id="travaux_prevus" placeholder="Activités planifiées pour demain..." style="min-height:70px"></textarea>
+      <textarea id="travaux_prevus" placeholder="Activités planifiées pour demain..." style="min-height:72px;"></textarea>
     </div>
   </div>
 
-  <!-- SECTION 4 : Livraisons -->
+  <!-- Livraisons -->
   <div class="section">
-    <div class="section-label">Livraisons & approvisionnement</div>
+    <div class="section-label"><span>Livraisons & approvisionnement</span></div>
     <div class="grid-2">
-      <div class="field">
-        <label>Livraisons reçues aujourd'hui</label>
-        <textarea id="livraisons_recues" placeholder="Ex: 20 pylônes P3, câble ACSR 240mm²..." style="min-height:75px"></textarea>
-      </div>
-      <div class="field">
-        <label>Matériaux manquants / en attente</label>
-        <textarea id="livraisons_attente" placeholder="Ex: Isolateurs 60kV — livraison prévue J+3..." style="min-height:75px"></textarea>
-      </div>
+      <div class="field"><label>Livraisons reçues aujourd'hui</label><textarea id="livraisons_recues" placeholder="Ex: 20 pylônes P3, câble ACSR 240mm²..."></textarea></div>
+      <div class="field"><label>Matériaux manquants / en attente</label><textarea id="livraisons_attente" placeholder="Ex: Isolateurs 60kV — livraison prévue J+3..."></textarea></div>
     </div>
   </div>
 
-  <!-- SECTION 5 : HSE -->
+  <!-- HSE -->
   <div class="section">
-    <div class="section-label">HSE — Santé, Sécurité, Environnement</div>
-    <div class="field" style="margin-bottom:14px">
+    <div class="section-label"><span>HSE — Santé, Sécurité, Environnement</span></div>
+    <div class="field" style="margin-bottom:14px;">
       <label>Événements HSE du jour</label>
       <div class="toggle-group">
         <button class="toggle-btn" onclick="toggleBtn(this)">Aucun incident</button>
@@ -401,39 +382,24 @@
         <button class="toggle-btn" onclick="toggleBtn(this)">ATT délivrée</button>
       </div>
     </div>
-    <div class="field">
-      <label>Détails HSE (si applicable)</label>
-      <textarea id="hse_details" placeholder="Description des incidents, observations, actions correctives prises..." style="min-height:70px"></textarea>
+    <div class="field"><label>Détails HSE (si applicable)</label><textarea id="hse_details" placeholder="Description des incidents, observations, actions correctives..."></textarea></div>
+  </div>
+
+  <!-- Qualité -->
+  <div class="section">
+    <div class="section-label"><span>Qualité & problèmes</span></div>
+    <div class="grid-2">
+      <div class="field"><label>Non-conformités / réserves qualité</label><textarea id="qualite" placeholder="Ex: Soudure fondation P12 non conforme — refaite..."></textarea></div>
+      <div class="field"><label>Problèmes / blocages du jour</label><textarea id="problemes" placeholder="Ex: Accès refusé par propriétaire terrain parcelle 34..."></textarea></div>
     </div>
   </div>
 
-  <!-- SECTION 6 : Qualité & problèmes -->
+  <!-- Décisions -->
   <div class="section">
-    <div class="section-label">Qualité & problèmes rencontrés</div>
+    <div class="section-label"><span>Décisions & points de vigilance</span></div>
     <div class="grid-2">
-      <div class="field">
-        <label>Non-conformités / réserves qualité</label>
-        <textarea id="qualite" placeholder="Ex: Soudure fondation P12 non conforme — refaite..." style="min-height:75px"></textarea>
-      </div>
-      <div class="field">
-        <label>Problèmes / blocages du jour</label>
-        <textarea id="problemes" placeholder="Ex: Accès refusé par propriétaire terrain parcelle 34..." style="min-height:75px"></textarea>
-      </div>
-    </div>
-  </div>
-
-  <!-- SECTION 7 : Décisions & notes -->
-  <div class="section">
-    <div class="section-label">Décisions & points de vigilance</div>
-    <div class="grid-2">
-      <div class="field">
-        <label>Décisions prises aujourd'hui</label>
-        <textarea id="decisions" placeholder="Ex: Réunion de chantier — décision de modifier tracé pylône P18..." style="min-height:75px"></textarea>
-      </div>
-      <div class="field">
-        <label>Points à anticiper / risques identifiés</label>
-        <textarea id="risques" placeholder="Ex: Risque retard semaine prochaine si livraison câble non confirmée..." style="min-height:75px"></textarea>
-      </div>
+      <div class="field"><label>Décisions prises aujourd'hui</label><textarea id="decisions" placeholder="Ex: Modification tracé pylône P18..."></textarea></div>
+      <div class="field"><label>Risques à anticiper</label><textarea id="risques" placeholder="Ex: Risque retard si livraison câble non confirmée..."></textarea></div>
     </div>
   </div>
 
@@ -447,9 +413,9 @@
     <div id="alerts-strip"></div>
     <div class="output-card">
       <div class="output-header">
-        <div class="output-header-left">
-          <span class="output-title">Rapport officiel généré</span>
-          <span class="output-meta" id="output-meta">—</span>
+        <div>
+          <div class="output-title">Rapport officiel généré</div>
+          <div class="output-meta" id="output-meta">—</div>
         </div>
         <button class="btn-copy" onclick="copyReport()">Copier</button>
       </div>
@@ -457,15 +423,15 @@
         <div id="report-text"></div>
         <div class="action-row">
           <button class="btn-action primary" onclick="exportPDF()">
-            <svg viewBox="0 0 15 15" fill="none"><path d="M3 1h7l3 3v10H3V1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M9 1v4h4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M5 8h5M5 10.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-            Exporter en PDF
+            <svg viewBox="0 0 14 14" fill="none"><path d="M2 1h8l3 3v9H2V1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M9 1v4h4" stroke="currentColor" stroke-width="1.2"/><path d="M4 8h6M4 10.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Exporter PDF
           </button>
           <button class="btn-action" onclick="openEmailModal()">
-            <svg viewBox="0 0 15 15" fill="none"><rect x="1" y="3" width="13" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M1 4l6.5 5L14 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M1 4l6 4.5L13 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Envoyer par email
           </button>
           <button class="btn-action" onclick="printReport()">
-            <svg viewBox="0 0 15 15" fill="none"><path d="M4 5V1h7v4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><rect x="1" y="5" width="13" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 9h7v5H4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+            <svg viewBox="0 0 14 14" fill="none"><path d="M4 4V1h6v3" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><rect x="1" y="4" width="12" height="6" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 8h6v5H4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
             Imprimer
           </button>
         </div>
@@ -478,355 +444,248 @@
 <div class="modal-overlay" id="emailModal">
   <div class="modal">
     <h3>Envoyer le rapport</h3>
-    <p>Ouvre ton client email avec le rapport pré-rempli. Tu peux aussi copier le contenu et le coller dans Outlook ou Gmail.</p>
-    <div class="field">
-      <label>Destinataires (séparés par virgule)</label>
-      <input type="text" id="email_to" placeholder="direction@entreprise.ma, client@maitredouvrage.ma">
-    </div>
-    <div class="field">
-      <label>Objet de l'email</label>
-      <input type="text" id="email_subject">
-    </div>
-    <div class="field">
-      <label>Message d'introduction</label>
-      <textarea id="email_intro" style="min-height:70px">Bonjour,
+    <p>Le rapport sera transmis via votre client email (Outlook, Gmail...).</p>
+    <div class="field"><label>Destinataires (séparés par virgule)</label><input type="text" id="email_to" placeholder="direction@entreprise.ma"></div>
+    <div class="field"><label>Objet</label><input type="text" id="email_subject"></div>
+    <div class="field"><label>Introduction</label><textarea id="email_intro" style="min-height:70px;">Bonjour,
 
 Veuillez trouver ci-dessous le rapport journalier de chantier.
 
-Cordialement,</textarea>
-    </div>
+Cordialement,</textarea></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeEmailModal()">Annuler</button>
-      <button class="btn-send" onclick="sendEmail()">Ouvrir dans mon client mail</button>
+      <button class="btn-send" onclick="sendEmail()">Ouvrir client mail</button>
     </div>
   </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
-const SUPA_URL = 'https://kytoohxfditlhmvzehgj.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5dG9vaHhmZGl0bGhtdnplaGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTk2MzEsImV4cCI6MjA5MDk3NTYzMX0.oMTiAaoYlzY0cryj2pBM9v4si4hHiE0QFSlhiSTRAFA';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+const SUPA_URL='https://kytoohxfditlhmvzehgj.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5dG9vaHhmZGl0bGhtdnplaGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTk2MzEsImV4cCI6MjA5MDk3NTYzMX0.oMTiAaoYlzY0cryj2pBM9v4si4hHiE0QFSlhiSTRAFA';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+let currentUser=null,currentChantier=null,mesChantiers=[];
 
-let currentUser = null;
-let currentChantier = null;
-let mesChantiers = [];
+document.getElementById('date_rapport').valueAsDate=new Date();
 
-document.getElementById('date_rapport').valueAsDate = new Date();
-
-// ── AUTH INIT ─────────────────────────────────────────
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location.href = 'index.html'; return; }
-
-  // Tenter de charger le profil — créer si inexistant
-  let { data: profile } = await sb.from('utilisateurs')
-    .select('*, organisations(*)')
-    .eq('id', session.user.id)
-    .single();
-
-  // Si profil absent (erreur 500/404) — créer org + profil automatiquement
-  if (!profile) {
-    const email = session.user.email;
-    const nom = email.split('@')[0];
-
-    // Créer organisation
-    const { data: org } = await sb.from('organisations')
-      .insert({ nom: 'Mon entreprise', email })
-      .select().single();
-
-    if (org) {
-      // Créer profil utilisateur
-      await sb.from('utilisateurs').insert({
-        id: session.user.id,
-        organisation_id: org.id,
-        nom,
-        role: 'admin'
-      });
-
-      // Recharger le profil
-      const { data: newProfile } = await sb.from('utilisateurs')
-        .select('*, organisations(*)')
-        .eq('id', session.user.id)
-        .single();
-      profile = newProfile;
+(async()=>{
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+  let{data:profile}=await sb.from('utilisateurs').select('*,organisations(*)').eq('id',session.user.id).single();
+  if(!profile){
+    const email=session.user.email;
+    const{data:org}=await sb.from('organisations').insert({nom:'Mon entreprise',email}).select().single();
+    if(org){
+      await sb.from('utilisateurs').insert({id:session.user.id,organisation_id:org.id,nom:email.split('@')[0],role:'admin'});
+      const{data:np}=await sb.from('utilisateurs').select('*,organisations(*)').eq('id',session.user.id).single();
+      profile=np;
     }
   }
-
-  currentUser = profile;
-
-  if (profile) {
-    document.getElementById('user-name').textContent = profile.nom || session.user.email;
-    document.getElementById('org-name').textContent = profile.organisations?.nom || '';
+  currentUser=profile;
+  if(profile){
+    const initials=(profile.nom||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('user-avatar').textContent=initials;
+    document.getElementById('user-name').textContent=profile.nom||session.user.email;
     await loadChantiers(profile.organisation_id);
-  } else {
-    // Fallback minimal — affiche le formulaire sans profil
-    document.getElementById('user-name').textContent = session.user.email;
-    document.getElementById('org-name').textContent = 'Compte non configuré';
-    showToast('Profil en cours de création — réessaie dans 10 secondes', 'error');
   }
 })();
 
-async function loadChantiers(orgId) {
-  const { data } = await sb.from('chantiers')
-    .select('*').eq('organisation_id', orgId).eq('statut', 'en_cours')
-    .order('created_at', { ascending: false });
-  mesChantiers = data || [];
-  if (mesChantiers.length === 0) {
-    const { data: newC } = await sb.from('chantiers').insert({
-      organisation_id: orgId, nom: 'Mon premier chantier',
-      reference: 'CHANTIER-001', duree_jours: 180, statut: 'en_cours'
-    }).select().single();
-    if (newC) mesChantiers = [newC];
+async function loadChantiers(orgId){
+  const{data}=await sb.from('chantiers').select('*').eq('organisation_id',orgId).eq('statut','en_cours').order('created_at',{ascending:false});
+  mesChantiers=data||[];
+  if(mesChantiers.length===0){
+    const{data:newC}=await sb.from('chantiers').insert({organisation_id:orgId,nom:'Mon premier chantier',reference:'CHANTIER-001',duree_jours:180,statut:'en_cours'}).select().single();
+    if(newC)mesChantiers=[newC];
   }
-  const sel = document.getElementById('chantier-select');
-  sel.innerHTML = mesChantiers.map(c => `<option value="${c.id}">${c.nom}</option>`).join('');
-  if (mesChantiers.length > 0) {
-    currentChantier = mesChantiers[0];
-    document.getElementById('nom_chantier').value = currentChantier.nom;
+  const sel=document.getElementById('chantier-select');
+  sel.innerHTML=mesChantiers.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+  if(mesChantiers.length>0){
+    currentChantier=mesChantiers[0];
+    document.getElementById('nom_chantier').value=currentChantier.nom;
   }
-  sel.addEventListener('change', () => {
-    currentChantier = mesChantiers.find(c => c.id === sel.value);
-    if (currentChantier) document.getElementById('nom_chantier').value = currentChantier.nom;
+  sel.addEventListener('change',()=>{
+    currentChantier=mesChantiers.find(c=>c.id===sel.value);
+    if(currentChantier)document.getElementById('nom_chantier').value=currentChantier.nom;
   });
 }
 
-async function logout() {
-  await sb.auth.signOut();
-  window.location.href = 'index.html';
-}
+async function logout(){await sb.auth.signOut();window.location.href='index.html';}
+function toggleBtn(btn){btn.classList.toggle('active');}
+function getActiveHSE(){return Array.from(document.querySelectorAll('.toggle-btn.active')).map(b=>b.textContent.trim());}
 
-function toggleBtn(btn) { btn.classList.toggle('active'); }
-
-function getActiveHSE() {
-  return Array.from(document.querySelectorAll('.toggle-btn.active')).map(b => b.textContent.trim());
-}
-
-async function generateReport() {
-  const btn = document.getElementById('genBtn');
-  btn.classList.add('loading'); btn.disabled = true;
-
-  const data = {
-    nom_chantier: document.getElementById('nom_chantier').value || 'Non renseigné',
-    date: document.getElementById('date_rapport').value,
-    chef_projet: document.getElementById('chef_projet').value || 'Non renseigné',
-    chef_chantier: document.getElementById('chef_chantier').value || 'Non renseigné',
-    avancement_reel: document.getElementById('avancement').value + '%',
-    avancement_prevu: document.getElementById('prevu').value || 'Non renseigné',
-    effectif: document.getElementById('effectif').value || '0',
-    engins: document.getElementById('engins').value || '0',
-    meteo: document.getElementById('meteo').value,
-    travaux_realises: document.getElementById('travaux_realises').value || 'Non renseigné',
-    travaux_prevus: document.getElementById('travaux_prevus').value || 'Non renseigné',
-    livraisons_recues: document.getElementById('livraisons_recues').value || 'Aucune',
-    livraisons_attente: document.getElementById('livraisons_attente').value || 'Aucune',
-    hse_evenements: getActiveHSE().join(', ') || 'Aucun événement coché',
-    hse_details: document.getElementById('hse_details').value || 'RAS',
-    qualite: document.getElementById('qualite').value || 'Aucune non-conformité',
-    problemes: document.getElementById('problemes').value || 'Aucun blocage',
-    decisions: document.getElementById('decisions').value || 'Aucune décision particulière',
-    risques: document.getElementById('risques').value || 'Aucun risque identifié',
+async function generateReport(){
+  const btn=document.getElementById('genBtn');
+  btn.classList.add('loading');btn.disabled=true;
+  const data={
+    nom_chantier:document.getElementById('nom_chantier').value||'Non renseigné',
+    date:document.getElementById('date_rapport').value,
+    chef_projet:document.getElementById('chef_projet').value||'Non renseigné',
+    chef_chantier:document.getElementById('chef_chantier').value||'Non renseigné',
+    avancement_reel:document.getElementById('avancement').value+'%',
+    avancement_prevu:document.getElementById('prevu').value||'Non renseigné',
+    effectif:document.getElementById('effectif').value||'0',
+    engins:document.getElementById('engins').value||'0',
+    meteo:document.getElementById('meteo').value,
+    travaux_realises:document.getElementById('travaux_realises').value||'Non renseigné',
+    travaux_prevus:document.getElementById('travaux_prevus').value||'Non renseigné',
+    livraisons_recues:document.getElementById('livraisons_recues').value||'Aucune',
+    livraisons_attente:document.getElementById('livraisons_attente').value||'Aucune',
+    hse_evenements:getActiveHSE().join(', ')||'Aucun événement coché',
+    hse_details:document.getElementById('hse_details').value||'RAS',
+    qualite:document.getElementById('qualite').value||'Aucune non-conformité',
+    problemes:document.getElementById('problemes').value||'Aucun blocage',
+    decisions:document.getElementById('decisions').value||'Aucune décision particulière',
+    risques:document.getElementById('risques').value||'Aucun risque identifié',
   };
-
-  const ecart = data.avancement_prevu !== 'Non renseigné'
-    ? (parseInt(data.avancement_reel) - parseInt(data.avancement_prevu)) + '%'
-    : 'Non calculable';
-
-  const prompt = `Tu es un assistant spécialisé dans la gestion de chantiers de lignes électriques haute tension (60kV/HTB).
-Tu dois rédiger un rapport journalier officiel, professionnel et structuré, destiné à la Direction et au Maître d'Ouvrage.
-Voici les données :
-IDENTIFICATION : Chantier : ${data.nom_chantier} · Date : ${data.date} · Chef projet : ${data.chef_projet} · Chef chantier : ${data.chef_chantier}
-AVANCEMENT : Réel : ${data.avancement_reel} · Prévu : ${data.avancement_prevu} · Écart : ${ecart} · Effectif : ${data.effectif} · Engins : ${data.engins} · Météo : ${data.meteo}
-TRAVAUX : Réalisés : ${data.travaux_realises} · Prévus demain : ${data.travaux_prevus}
-APPROVISIONNEMENT : Reçu : ${data.livraisons_recues} · En attente : ${data.livraisons_attente}
-HSE : ${data.hse_evenements} — ${data.hse_details}
-QUALITÉ : ${data.qualite}
-PROBLÈMES : ${data.problemes}
-DÉCISIONS : ${data.decisions}
-RISQUES : ${data.risques}
-Rédige un rapport officiel en 12 sections : 1.EN-TÊTE 2.RÉSUMÉ EXÉCUTIF 3.AVANCEMENT & PLANNING 4.ACTIVITÉS DU JOUR 5.RESSOURCES 6.APPROVISIONNEMENT 7.HSE 8.QUALITÉ 9.PROBLÈMES & ACTIONS 10.PRÉVISIONS J+1 11.RISQUES 12.DÉCISIONS. Ton factuel, termes HT, alertes préfixées ⚠️.`;
-
-  try {
-    const response = await fetch('/api/generate-report', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erreur serveur: ${response.status}`);
-    }
-
-    const result = await response.json();
-    const text = result.text || 'Erreur lors de la génération.';
-
-    document.getElementById('report-text').textContent = text;
-    document.getElementById('output-meta').textContent = `${data.nom_chantier} · ${data.date} · ${data.avancement_reel}`;
-
-    await saveRapport(data, text);
-
-    const alerts = [];
-    const avReal = parseInt(data.avancement_reel), avPrevu = parseInt(data.avancement_prevu);
-    if (!isNaN(avReal) && !isNaN(avPrevu) && avReal < avPrevu - 5)
-      alerts.push({ type:'danger', msg:`Retard planning : réel ${data.avancement_reel} < prévu ${data.avancement_prevu}` });
-    if (data.hse_evenements.includes('Accident') || data.hse_evenements.includes('Presqu'))
-      alerts.push({ type:'danger', msg:'Incident HSE — vérifier actions correctives' });
-    if (data.livraisons_attente && data.livraisons_attente !== 'Aucune')
-      alerts.push({ type:'warn', msg:'Livraisons en attente — risque blocage' });
-    if (data.meteo === 'Vent fort' || data.meteo === 'Orage')
-      alerts.push({ type:'warn', msg:`Météo défavorable (${data.meteo}) — vérifier arrêt travaux aériens` });
-
-    const strip = document.getElementById('alerts-strip');
-    strip.innerHTML = alerts.map(a => `<div class="alert-item ${a.type}"><span class="alert-dot"></span>${a.msg}</div>`).join('');
-    strip.style.display = alerts.length ? 'block' : 'none';
-
-    const out = document.getElementById('output-section');
+  const ecart=data.avancement_prevu!=='Non renseigné'?(parseInt(data.avancement_reel)-parseInt(data.avancement_prevu))+'%':'Non calculable';
+  const prompt=`Tu es un assistant spécialisé dans la gestion de chantiers de lignes électriques haute tension (60kV/HTB).
+Rédige un rapport journalier officiel, professionnel et structuré, destiné à la Direction et au Maître d'Ouvrage.
+IDENTIFICATION: Chantier: ${data.nom_chantier} · Date: ${data.date} · Chef projet: ${data.chef_projet} · Chef chantier: ${data.chef_chantier}
+AVANCEMENT: Réel: ${data.avancement_reel} · Prévu: ${data.avancement_prevu} · Écart: ${ecart} · Effectif: ${data.effectif} · Engins: ${data.engins} · Météo: ${data.meteo}
+TRAVAUX: Réalisés: ${data.travaux_realises} · Prévus demain: ${data.travaux_prevus}
+APPROVISIONNEMENT: Reçu: ${data.livraisons_recues} · En attente: ${data.livraisons_attente}
+HSE: ${data.hse_evenements} — ${data.hse_details}
+QUALITÉ: ${data.qualite} · PROBLÈMES: ${data.problemes} · DÉCISIONS: ${data.decisions} · RISQUES: ${data.risques}
+Rédige en 12 sections: 1.EN-TÊTE 2.RÉSUMÉ EXÉCUTIF 3.AVANCEMENT & PLANNING 4.ACTIVITÉS DU JOUR 5.RESSOURCES 6.APPROVISIONNEMENT 7.HSE 8.QUALITÉ 9.PROBLÈMES & ACTIONS 10.PRÉVISIONS J+1 11.RISQUES 12.DÉCISIONS. Ton factuel, termes HT, alertes préfixées ⚠️.`;
+  try{
+    const response=await fetch('/api/generate-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+    const result=await response.json();
+    if(!response.ok){document.getElementById('report-text').textContent=`Erreur: ${result.error||response.status}`;document.getElementById('output-section').classList.add('visible');btn.classList.remove('loading');btn.disabled=false;return;}
+    const text=result.text||'Erreur génération.';
+    document.getElementById('report-text').textContent=text;
+    document.getElementById('output-meta').textContent=`${data.nom_chantier} · ${data.date} · ${data.avancement_reel}`;
+    await saveRapport(data,text);
+    const alerts=[];
+    const avReal=parseInt(data.avancement_reel),avPrevu=parseInt(data.avancement_prevu);
+    if(!isNaN(avReal)&&!isNaN(avPrevu)&&avReal<avPrevu-5)alerts.push({type:'danger',msg:`Retard planning — réel ${data.avancement_reel} · prévu ${data.avancement_prevu}`});
+    if(data.hse_evenements.includes('Accident')||data.hse_evenements.includes('Presqu'))alerts.push({type:'danger',msg:'Incident HSE signalé — vérifier actions correctives'});
+    if(data.livraisons_attente&&data.livraisons_attente!=='Aucune')alerts.push({type:'warn',msg:'Livraisons en attente — risque de blocage à surveiller'});
+    if(data.meteo==='Vent fort'||data.meteo==='Orage')alerts.push({type:'warn',msg:`Météo défavorable (${data.meteo}) — vérifier arrêt travaux aériens`});
+    const strip=document.getElementById('alerts-strip');
+    strip.innerHTML=alerts.map(a=>`<div class="alert-item ${a.type}"><span class="alert-dot"></span>${a.msg}</div>`).join('');
+    strip.style.display=alerts.length?'block':'none';
+    const out=document.getElementById('output-section');
     out.classList.add('visible');
-    out.scrollIntoView({ behavior:'smooth', block:'start' });
-
-  } catch(e) {
-    document.getElementById('report-text').textContent = 'Erreur connexion API.';
+    out.scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){
+    document.getElementById('report-text').textContent=`Erreur: ${e.message}`;
     document.getElementById('output-section').classList.add('visible');
   }
-  btn.classList.remove('loading'); btn.disabled = false;
+  btn.classList.remove('loading');btn.disabled=false;
 }
 
-async function saveRapport(data, texteGenere) {
-  if (!currentUser || !currentChantier) { showToast('Non connecté — rapport non sauvegardé', 'error'); return; }
-  const rapport = {
-    chantier_id: currentChantier.id, auteur_id: currentUser.id,
-    date_rapport: data.date || new Date().toISOString().split('T')[0],
-    avancement_reel: parseInt(data.avancement_reel) || 0,
-    avancement_prevu: parseInt(data.avancement_prevu) || null,
-    effectif: parseInt(data.effectif) || 0, engins: parseInt(data.engins) || 0,
-    meteo: data.meteo, travaux_realises: data.travaux_realises, travaux_prevus: data.travaux_prevus,
-    livraisons_recues: data.livraisons_recues,
-    livraisons_attente: data.livraisons_attente !== 'Aucune' ? data.livraisons_attente : '',
-    hse_evenements: data.hse_evenements, hse_details: data.hse_details,
-    hse_incident: data.hse_evenements?.includes('Accident') || data.hse_evenements?.includes('Presqu') || false,
-    qualite: data.qualite, problemes: data.problemes, decisions: data.decisions,
-    risques: data.risques, texte_rapport: texteGenere,
+async function saveRapport(data,texteGenere){
+  if(!currentUser||!currentChantier){showToast('Non connecté','error');return;}
+  const rapport={
+    chantier_id:currentChantier.id,auteur_id:currentUser.id,
+    date_rapport:data.date||new Date().toISOString().split('T')[0],
+    avancement_reel:parseInt(data.avancement_reel)||0,
+    avancement_prevu:parseInt(data.avancement_prevu)||null,
+    effectif:parseInt(data.effectif)||0,engins:parseInt(data.engins)||0,
+    meteo:data.meteo,travaux_realises:data.travaux_realises,travaux_prevus:data.travaux_prevus,
+    livraisons_recues:data.livraisons_recues,
+    livraisons_attente:data.livraisons_attente!=='Aucune'?data.livraisons_attente:'',
+    hse_evenements:data.hse_evenements,hse_details:data.hse_details,
+    hse_incident:data.hse_evenements?.includes('Accident')||data.hse_evenements?.includes('Presqu')||false,
+    qualite:data.qualite,problemes:data.problemes,decisions:data.decisions,
+    risques:data.risques,texte_rapport:texteGenere,
   };
-  const { error } = await sb.from('rapports').upsert(rapport, { onConflict: 'chantier_id,date_rapport' });
-  if (error) { console.error(error); showToast('Erreur sauvegarde Supabase', 'error'); }
-  else showToast('Rapport sauvegardé dans Supabase ✓');
+  const{error}=await sb.from('rapports').upsert(rapport,{onConflict:'chantier_id,date_rapport'});
+  if(error){console.error(error);showToast('Erreur sauvegarde','error');}
+  else showToast('Rapport sauvegardé ✓');
 }
 
-function copyReport() {
-  const text = document.getElementById('report-text').textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.querySelector('.btn-copy');
-    btn.textContent = 'Copié !';
-    setTimeout(() => btn.textContent = 'Copier', 2000);
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+function copyReport(){
+  navigator.clipboard.writeText(document.getElementById('report-text').textContent).then(()=>{
+    const b=document.querySelector('.btn-copy');b.textContent='Copié !';
+    setTimeout(()=>b.textContent='Copier',2000);
   });
 }
-
-function showToast(msg, type='success') {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = `toast ${type} show`;
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-function exportPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  const reportText = document.getElementById('report-text').textContent;
-  const nomChantier = document.getElementById('nom_chantier').value || 'Chantier';
-  const dateRapport = document.getElementById('date_rapport').value || new Date().toISOString().split('T')[0];
-  const chefProjet = document.getElementById('chef_projet').value || '';
-  const W = 210, margin = 18, contentW = W - margin * 2;
-  doc.setFillColor(10,14,10); doc.rect(0,0,W,28,'F');
-  doc.setFillColor(77,255,124); doc.rect(0,0,5,28,'F');
-  doc.setTextColor(77,255,124); doc.setFont('helvetica','bold'); doc.setFontSize(14);
-  doc.text('Progev', 12, 12);
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(143,168,143);
-  doc.text('Rapport journalier de chantier', 12, 19);
-  doc.text(dateRapport, W-margin, 19, {align:'right'});
-  doc.setFillColor(17,23,17); doc.rect(0,28,W,22,'F');
-  doc.setTextColor(232,240,232); doc.setFont('helvetica','bold'); doc.setFontSize(13);
-  doc.text(nomChantier, margin, 40);
-  if (chefProjet) { doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(143,168,143); doc.text(`Chef de projet : ${chefProjet}`, margin, 47); }
-  const av = document.getElementById('avancement').value;
-  doc.setFillColor(77,255,124); doc.roundedRect(W-margin-28,33,28,10,3,3,'F');
-  doc.setTextColor(10,14,10); doc.setFont('helvetica','bold'); doc.setFontSize(9);
-  doc.text(`${av}%`, W-margin-14, 40, {align:'center'});
-  let y = 60;
-  doc.setTextColor(50,50,50); doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  const lines = doc.splitTextToSize(reportText, contentW);
-  lines.forEach(line => {
-    if (y > 272) {
+function exportPDF(){
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const text=document.getElementById('report-text').textContent;
+  const nom=document.getElementById('nom_chantier').value||'Chantier';
+  const date=document.getElementById('date_rapport').value||new Date().toISOString().split('T')[0];
+  const W=210,margin=18,cW=W-margin*2;
+  doc.setFillColor(26,26,20);doc.rect(0,0,W,28,'F');
+  doc.setFillColor(180,83,9);doc.rect(0,0,4,28,'F');
+  doc.setTextColor(250,249,246);doc.setFont('helvetica','bold');doc.setFontSize(14);
+  doc.text('Progev',12,12);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(154,154,142);
+  doc.text('Rapport journalier de chantier',12,19);doc.text(date,W-margin,19,{align:'right'});
+  doc.setFillColor(243,240,235);doc.rect(0,28,W,20,'F');
+  doc.setTextColor(26,26,20);doc.setFont('helvetica','bold');doc.setFontSize(13);
+  doc.text(nom,margin,40);
+  let y=58;
+  doc.setTextColor(50,50,44);doc.setFont('helvetica','normal');doc.setFontSize(9);
+  doc.splitTextToSize(text,cW).forEach(line=>{
+    if(y>272){
       doc.addPage();
-      doc.setFillColor(10,14,10); doc.rect(0,0,W,12,'F');
-      doc.setFillColor(77,255,124); doc.rect(0,0,5,12,'F');
-      doc.setTextColor(143,168,143); doc.setFontSize(7);
-      doc.text(`${nomChantier} · ${dateRapport} · Suite`, 12, 8);
-      y = 22; doc.setTextColor(50,50,50); doc.setFontSize(9);
+      doc.setFillColor(26,26,20);doc.rect(0,0,W,12,'F');
+      doc.setFillColor(180,83,9);doc.rect(0,0,4,12,'F');
+      doc.setTextColor(154,154,142);doc.setFontSize(7);
+      doc.text(`${nom} · ${date} · Suite`,12,8);
+      y=22;doc.setTextColor(50,50,44);doc.setFontSize(9);
     }
-    const isSectionHeader = /^\d+\.\s+[A-ZÉÀÈÊÎ]/.test(line);
-    const isAlert = line.includes('⚠️') || line.startsWith('⚠');
-    if (isSectionHeader) {
-      y += 3;
-      doc.setFillColor(240,248,240); doc.rect(margin-3, y-5, contentW+6, 8,'F');
-      doc.setFont('helvetica','bold'); doc.setTextColor(15,110,86);
-      doc.text(line, margin, y);
-      doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); y += 6;
-    } else if (isAlert) {
-      doc.setFillColor(255,245,230); doc.rect(margin-3, y-4.5, contentW+6, 7,'F');
-      doc.setFont('helvetica','bold'); doc.setTextColor(180,90,0);
-      doc.text(line.replace('⚠️','[!]').replace('⚠','[!]'), margin, y);
-      doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50); y += 5.5;
-    } else if (line.trim() === '') { y += 2.5; }
-    else { doc.text(line, margin, y); y += 5; }
+    if(/^\d+\.\s+[A-ZÉÀÈÊÎ]/.test(line)){
+      y+=3;doc.setFillColor(243,240,235);doc.rect(margin-3,y-5,cW+6,8,'F');
+      doc.setFont('helvetica','bold');doc.setTextColor(180,83,9);
+      doc.text(line,margin,y);doc.setFont('helvetica','normal');doc.setTextColor(50,50,44);y+=6;
+    }else if(line.includes('⚠️')||line.startsWith('⚠')){
+      doc.setFillColor(255,251,235);doc.rect(margin-3,y-4.5,cW+6,7,'F');
+      doc.setFont('helvetica','bold');doc.setTextColor(146,64,14);
+      doc.text(line.replace('⚠️','[!]').replace('⚠','[!]'),margin,y);
+      doc.setFont('helvetica','normal');doc.setTextColor(50,50,44);y+=5.5;
+    }else if(line.trim()===''){y+=2.5;}
+    else{doc.text(line,margin,y);y+=5;}
   });
-  const total = doc.internal.getNumberOfPages();
-  for (let i=1; i<=total; i++) {
-    doc.setPage(i); doc.setFillColor(240,245,240); doc.rect(0,285,W,12,'F');
-    doc.setTextColor(143,168,143); doc.setFont('helvetica','normal'); doc.setFontSize(7);
-    doc.text(`Généré par Progev · ${dateRapport}`, margin, 292);
-    doc.text(`Page ${i} / ${total}`, W-margin, 292, {align:'right'});
+  const total=doc.internal.getNumberOfPages();
+  for(let i=1;i<=total;i++){
+    doc.setPage(i);doc.setFillColor(243,240,235);doc.rect(0,285,W,12,'F');
+    doc.setTextColor(154,154,142);doc.setFont('helvetica','normal');doc.setFontSize(7);
+    doc.text(`Progev · ${date}`,margin,292);doc.text(`Page ${i}/${total}`,W-margin,292,{align:'right'});
   }
-  const filename = `rapport-${nomChantier.replace(/\s+/g,'-').toLowerCase()}-${dateRapport}.pdf`;
-  doc.save(filename);
+  doc.save(`rapport-${nom.replace(/\s+/g,'-').toLowerCase()}-${date}.pdf`);
   showToast('PDF exporté ✓');
 }
-
-function printReport() {
-  const text = document.getElementById('report-text').textContent;
-  const nom = document.getElementById('nom_chantier').value || 'Chantier';
-  const date = document.getElementById('date_rapport').value || '';
-  const win = window.open('','_blank');
+function printReport(){
+  const text=document.getElementById('report-text').textContent;
+  const nom=document.getElementById('nom_chantier').value||'Chantier';
+  const date=document.getElementById('date_rapport').value||'';
+  const win=window.open('','_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rapport · ${nom}</title>
-  <style>body{font-family:Arial,sans-serif;font-size:11px;line-height:1.6;color:#1a1a1a;padding:20mm}
-  h1{font-size:16px;border-bottom:2px solid #0f6e56;padding-bottom:8px;color:#0f6e56;margin-bottom:16px}
-  pre{white-space:pre-wrap;font-family:Arial,sans-serif;font-size:11px}
-  @media print{body{padding:15mm}}</style></head><body>
-  <h1>Rapport journalier — ${nom}</h1>
-  <div style="color:#666;font-size:10px;margin-bottom:16px;">Date : ${date} · Généré par Progev</div>
-  <pre>${text}</pre>
-  <script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  <style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:0 24px;font-size:12px;line-height:1.7;color:#1a1a14}
+  h1{font-size:20px;border-bottom:2px solid #b45309;padding-bottom:8px;color:#1a1a14;margin-bottom:16px}
+  pre{white-space:pre-wrap;font-family:'Courier New',monospace;font-size:11px}
+  @media print{body{padding:15mm}}</style></head>
+  <body><h1>Rapport journalier — ${nom}</h1>
+  <p style="color:#9a9a8e;font-size:11px;margin-bottom:20px;">Date : ${date} · Généré par Progev</p>
+  <pre>${text}</pre><script>window.onload=()=>{window.print();}<\/script></body></html>`);
   win.document.close();
 }
-
-function openEmailModal() {
-  const nom = document.getElementById('nom_chantier').value || 'Chantier';
-  const date = document.getElementById('date_rapport').value || new Date().toLocaleDateString('fr-FR');
-  document.getElementById('email_subject').value = `Rapport journalier chantier — ${nom} — ${date}`;
+function openEmailModal(){
+  const nom=document.getElementById('nom_chantier').value||'Chantier';
+  const date=document.getElementById('date_rapport').value||new Date().toLocaleDateString('fr-FR');
+  document.getElementById('email_subject').value=`Rapport journalier chantier — ${nom} — ${date}`;
   document.getElementById('emailModal').classList.add('open');
 }
-function closeEmailModal() { document.getElementById('emailModal').classList.remove('open'); }
-
-function sendEmail() {
-  const to = document.getElementById('email_to').value.trim();
-  const subject = document.getElementById('email_subject').value.trim();
-  const intro = document.getElementById('email_intro').value.trim();
-  const report = document.getElementById('report-text').textContent;
-  if (!to) { showToast('Renseignez un destinataire', 'error'); return; }
-  const body = `${intro}\n\n${'─'.repeat(60)}\n\n${report}\n\n${'─'.repeat(60)}\n\nGénéré par Progev — progev.com`;
-  window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  closeEmailModal();
-  showToast('Client email ouvert ✓');
+function closeEmailModal(){document.getElementById('emailModal').classList.remove('open');}
+function sendEmail(){
+  const to=document.getElementById('email_to').value.trim();
+  const subject=document.getElementById('email_subject').value.trim();
+  const intro=document.getElementById('email_intro').value.trim();
+  const report=document.getElementById('report-text').textContent;
+  if(!to){showToast('Renseignez un destinataire','error');return;}
+  const body=`${intro}\n\n${'─'.repeat(60)}\n\n${report}\n\n${'─'.repeat(60)}\n\nGénéré par Progev — progev.com`;
+  window.location.href=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  closeEmailModal();showToast('Client email ouvert ✓');
 }
 </script>
 </body>
