@@ -562,6 +562,9 @@ Rédige en 12 sections: 1.EN-TÊTE 2.RÉSUMÉ EXÉCUTIF 3.AVANCEMENT & PLANNING 
     if(data.hse_evenements.includes('Accident')||data.hse_evenements.includes('Presqu'))alerts.push({type:'danger',msg:'Incident HSE signalé — vérifier actions correctives'});
     if(data.livraisons_attente&&data.livraisons_attente!=='Aucune')alerts.push({type:'warn',msg:'Livraisons en attente — risque de blocage à surveiller'});
     if(data.meteo==='Vent fort'||data.meteo==='Orage')alerts.push({type:'warn',msg:`Météo défavorable (${data.meteo}) — vérifier arrêt travaux aériens`});
+
+    // ── Envoi WhatsApp automatique ──────────────────
+    sendWhatsAppAuto(data, text, alerts);
     const strip=document.getElementById('alerts-strip');
     strip.innerHTML=alerts.map(a=>`<div class="alert-item ${a.type}"><span class="alert-dot"></span>${a.msg}</div>`).join('');
     strip.style.display=alerts.length?'block':'none';
@@ -596,7 +599,41 @@ async function saveRapport(data,texteGenere){
   else showToast('Rapport sauvegardé ✓');
 }
 
-function showToast(msg,type='success'){
+async function sendWhatsAppAuto(data, text, alerts) {
+  try {
+    const waConfig = JSON.parse(localStorage.getItem('progev_wa_config') || '{}');
+    if (!waConfig.sid || !waConfig.token || !waConfig.from) return;
+    if (!waConfig.toggles?.rapport) return;
+    const numeros = (waConfig.numeros || []).map(n => n.numero).filter(Boolean);
+    if (!numeros.length) return;
+
+    // HSE alert overrides toggle check
+    const hasHSE = data.hse_evenements?.includes('Accident') || data.hse_evenements?.includes('Presqu');
+    if (hasHSE && !waConfig.toggles?.hse) return;
+
+    await fetch('/api/send-whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rapport: text,
+        chantier: data.nom_chantier,
+        date: data.date,
+        avancement: data.avancement_reel,
+        alertes: alerts.map(a => a.msg),
+        destinataires: numeros,
+        twilio_sid: waConfig.sid,
+        twilio_token: waConfig.token,
+        twilio_from: waConfig.from.startsWith('whatsapp:') ? waConfig.from : `whatsapp:${waConfig.from}`
+      })
+    });
+    showToast('Rapport envoyé sur WhatsApp ✓');
+  } catch(e) {
+    // Silently fail — WhatsApp is not blocking
+    console.warn('WhatsApp send failed:', e.message);
+  }
+}
+
+
   const t=document.getElementById('toast');
   t.textContent=msg;t.className=`toast ${type} show`;
   setTimeout(()=>t.classList.remove('show'),3000);
