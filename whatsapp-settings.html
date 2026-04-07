@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progev — Configuration WhatsApp</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --cream:#faf9f6;--cream2:#f3f0eb;--cream3:#ede9e2;
+  --ink:#1a1a14;--ink2:#4a4a40;--ink3:#9a9a8e;
+  --border:#e2ddd6;--border2:#ccc9c0;
+  --accent:#b45309;--accent-light:#fef3c7;
+  --white:#ffffff;
+  --green:#166534;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+  --red:#991b1b;--red-bg:#fef2f2;--red-border:#fca5a5;
+  --amber:#92400e;--amber-bg:#fffbeb;--amber-border:#fcd34d;
+  --wa:#25D366;--wa-dark:#128C7E;--wa-bg:#f0fdf4;
+  --radius:10px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 40px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-left{display:flex;align-items:center;gap:28px;}
+.logo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);text-decoration:none;letter-spacing:-0.3px;}
+.logo span{color:var(--accent);}
+.topbar-nav{display:flex;gap:0;}
+.nav-item{padding:0 16px;height:58px;display:flex;align-items:center;font-size:13px;color:var(--ink3);text-decoration:none;border-bottom:2px solid transparent;transition:all 0.15s;}
+.nav-item:hover{color:var(--ink);}
+.nav-item.active{color:var(--accent);border-bottom-color:var(--accent);}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--cream2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;}
+.user-avatar{width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--white);font-size:10px;font-weight:600;display:grid;place-items:center;}
+.user-name{font-size:12px;font-weight:500;}
+.btn-logout{font-size:12px;color:var(--ink3);background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.chantier-sel{background:var(--cream2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);outline:none;max-width:220px;}
+.content{max-width:800px;margin:0 auto;padding:32px 40px 80px;}
+.page-eyebrow{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;color:var(--ink);letter-spacing:-0.5px;margin-bottom:4px;}
+.page-title em{color:var(--accent);font-style:italic;}
+.page-sub{font-size:13px;color:var(--ink3);margin-bottom:28px;}
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:18px;}
+.card-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;margin-bottom:4px;}
+.card-sub{font-size:12px;color:var(--ink3);margin-bottom:20px;}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.field label{font-size:11px;letter-spacing:0.5px;color:var(--ink3);font-weight:500;text-transform:uppercase;}
+.field input,.field select{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;transition:border-color 0.2s;width:100%;}
+.field input:focus,.field select:focus{border-color:var(--accent);}
+.field .hint{font-size:11px;color:var(--ink3);margin-top:3px;}
+.btn-primary{background:var(--ink);color:var(--white);border:none;border-radius:var(--radius);padding:11px 20px;font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.15s;}
+.btn-primary:hover{background:var(--accent);}
+.btn-secondary{background:var(--cream2);color:var(--ink2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-wa{background:var(--wa);color:var(--white);border:none;border-radius:var(--radius);padding:11px 20px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:8px;}
+.btn-wa:hover{background:var(--wa-dark);}
+.btn-wa:disabled{opacity:0.5;cursor:not-allowed;}
+.numero-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.numero-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--cream2);border:1px solid var(--border);border-radius:8px;}
+.numero-tag{font-family:'DM Mono',monospace;font-size:13px;flex:1;}
+.numero-role{font-size:11px;color:var(--ink3);}
+.btn-remove{background:transparent;border:none;color:var(--ink3);cursor:pointer;font-size:16px;padding:0 4px;transition:color 0.15s;}
+.btn-remove:hover{color:var(--red);}
+.wa-banner{background:var(--wa-bg);border:1px solid var(--wa);border-radius:10px;padding:16px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-start;}
+.wa-icon{flex-shrink:0;margin-top:2px;}
+.wa-title{font-weight:600;font-size:14px;color:var(--wa-dark);margin-bottom:4px;}
+.wa-desc{font-size:13px;color:var(--ink3);line-height:1.5;}
+.step-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:var(--accent);color:var(--white);border-radius:50%;font-size:11px;font-weight:700;flex-shrink:0;margin-right:6px;}
+.steps{display:flex;flex-direction:column;gap:12px;}
+.step{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--cream2);border-radius:8px;font-size:13px;line-height:1.5;}
+code{background:rgba(0,0,0,0.06);padding:2px 6px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;}
+.status-ok{color:var(--green);font-weight:600;}
+.status-err{color:var(--red);font-weight:600;}
+.test-result{padding:12px 14px;border-radius:8px;font-size:13px;margin-top:12px;display:none;}
+.test-result.ok{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
+.test-result.err{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);}
+.toggle-row:last-child{border-bottom:none;}
+.toggle-label{font-size:13px;font-weight:500;}
+.toggle-desc{font-size:11px;color:var(--ink3);margin-top:2px;}
+.toggle{position:relative;width:40px;height:22px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:var(--cream3);border-radius:22px;cursor:pointer;transition:0.2s;}
+.toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:var(--white);border-radius:50%;transition:0.2s;}
+.toggle input:checked+.toggle-slider{background:var(--wa);}
+.toggle input:checked+.toggle-slider::before{transform:translateX(18px);}
+.toast{position:fixed;bottom:28px;right:28px;z-index:999;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:500;border:1px solid;transform:translateY(60px);opacity:0;transition:all 0.3s ease;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{background:var(--green-bg);border-color:var(--green-border);color:var(--green);}
+.toast.error{background:var(--red-bg);border-color:var(--red-border);color:var(--red);}
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-left">
+    <a href="dashboard-direction.html" class="logo">Pro<span>gev</span></a>
+    <div class="topbar-nav">
+      <a href="dashboard-direction.html" class="nav-item">Dashboard</a>
+      <a href="chantier-rapport-ia.html" class="nav-item">Rapport</a>
+      <a href="budget.html" class="nav-item">Budget</a>
+      <a href="whatsapp-settings.html" class="nav-item active">WhatsApp</a>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <select id="chantier-sel" class="chantier-sel"></select>
+    <div class="user-chip">
+      <div class="user-avatar" id="user-avatar">—</div>
+      <span class="user-name" id="user-display">—</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">Déconnexion</button>
+  </div>
+</nav>
+
+<div class="content">
+  <div class="page-eyebrow">Automation</div>
+  <div class="page-title">WhatsApp <em>automatique</em></div>
+  <div class="page-sub">Recevez chaque rapport journalier en résumé sur WhatsApp, automatiquement après génération.</div>
+
+  <!-- SANDBOX GUIDE -->
+  <div class="wa-banner">
+    <svg class="wa-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2C5.58 2 2 5.58 2 10c0 1.5.4 2.9 1.1 4.1L2 18l3.9-1.1C7.1 17.6 8.5 18 10 18c4.42 0 8-3.58 8-8s-3.58-8-8-8z" fill="#25D366"/>
+      <path d="M7.5 6.5c-.2-.5-.4-.5-.6-.5-.2 0-.3 0-.5.1-.2.1-.7.7-.7 1.7s.7 2 .8 2.1c.1.1 1.4 2.2 3.4 3 .5.2.8.3 1.1.2.3-.1.9-.4 1.1-.8.1-.4.1-.7 0-.8-.1-.1-.3-.2-.5-.3-.2-.1-1-.5-1.2-.6-.2-.1-.3-.1-.4.1-.1.2-.5.6-.6.7-.1.1-.2.1-.4 0-.2-.1-.8-.3-1.5-1-.6-.5-1-1.2-1.1-1.4-.1-.2 0-.3.1-.4l.3-.3c.1-.1.1-.2.2-.3.1-.1.1-.2 0-.3z" fill="white"/>
+    </svg>
+    <div>
+      <div class="wa-title">Configuration Twilio Sandbox (gratuit pour tester)</div>
+      <div class="wa-desc">Twilio propose un sandbox WhatsApp gratuit. Chaque destinataire doit envoyer un code d'activation une seule fois depuis son téléphone.</div>
+    </div>
+  </div>
+
+  <!-- ÉTAPES TWILIO -->
+  <div class="card">
+    <div class="card-title">Étape 1 — Créer ton compte Twilio</div>
+    <div class="card-sub">Gratuit · Aucune carte bancaire requise pour le sandbox</div>
+    <div class="steps">
+      <div class="step"><span class="step-badge">1</span><div>Va sur <strong>twilio.com</strong> → "Sign up" → vérifie ton email et ton numéro de téléphone.</div></div>
+      <div class="step"><span class="step-badge">2</span><div>Dans le dashboard Twilio, trouve ton <strong>Account SID</strong> et ton <strong>Auth Token</strong> sur la page d'accueil.</div></div>
+      <div class="step"><span class="step-badge">3</span><div>Va dans <strong>Messaging → Try it out → Send a WhatsApp message</strong>. Twilio te donne un numéro sandbox (ex: <code>+14155238886</code>) et un code (ex: <code>join lamp-tiger</code>).</div></div>
+      <div class="step"><span class="step-badge">4</span><div>Depuis ton téléphone WhatsApp, envoie le code au numéro sandbox. Fais pareil pour chaque destinataire (direction, chef chantier...).</div></div>
+    </div>
+  </div>
+
+  <!-- CREDENTIALS -->
+  <div class="card">
+    <div class="card-title">Étape 2 — Configurer les credentials</div>
+    <div class="card-sub">Ces valeurs sont sauvegardées dans Supabase pour ton organisation</div>
+    <div class="field">
+      <label>Twilio Account SID</label>
+      <input type="text" id="twilio-sid" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+      <span class="hint">Visible sur la page d'accueil du dashboard Twilio</span>
+    </div>
+    <div class="field">
+      <label>Twilio Auth Token</label>
+      <input type="password" id="twilio-token" placeholder="••••••••••••••••••••••••••••••••">
+      <span class="hint">Cliquez sur "show" dans Twilio pour le voir</span>
+    </div>
+    <div class="field">
+      <label>Numéro WhatsApp sandbox (Twilio)</label>
+      <input type="text" id="twilio-from" placeholder="+14155238886">
+      <span class="hint">Le numéro Twilio sandbox — format international avec +</span>
+    </div>
+    <button class="btn-primary" onclick="saveCreds()">Enregistrer les credentials</button>
+  </div>
+
+  <!-- DESTINATAIRES -->
+  <div class="card">
+    <div class="card-title">Étape 3 — Numéros destinataires</div>
+    <div class="card-sub">Les rapports seront envoyés à ces numéros après chaque génération</div>
+    <div id="numero-list" class="numero-list"></div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;">
+      <input type="text" id="new-numero" placeholder="+212661234567" style="flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;">
+      <select id="new-role" style="border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;background:var(--white);color:var(--ink);">
+        <option value="chef_projet">Chef de projet</option>
+        <option value="direction">Direction</option>
+        <option value="chef_chantier">Chef de chantier</option>
+        <option value="autre">Autre</option>
+      </select>
+      <button class="btn-secondary" onclick="addNumero()">Ajouter</button>
+    </div>
+    <button class="btn-primary" onclick="saveNumeros()">Enregistrer les destinataires</button>
+  </div>
+
+  <!-- PARAMÈTRES -->
+  <div class="card">
+    <div class="card-title">Paramètres d'envoi</div>
+    <div class="card-sub">Choisissez ce qui déclenche un envoi WhatsApp</div>
+    <div class="toggle-row">
+      <div><div class="toggle-label">Rapport journalier généré</div><div class="toggle-desc">Envoi automatique après chaque génération de rapport</div></div>
+      <label class="toggle"><input type="checkbox" id="toggle-rapport" checked><span class="toggle-slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <div><div class="toggle-label">Alerte retard planning</div><div class="toggle-desc">Envoi si avancement réel < avancement prévu de plus de 5 pts</div></div>
+      <label class="toggle"><input type="checkbox" id="toggle-retard" checked><span class="toggle-slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <div><div class="toggle-label">Alerte incident HSE</div><div class="toggle-desc">Envoi immédiat si un incident HSE est signalé</div></div>
+      <label class="toggle"><input type="checkbox" id="toggle-hse" checked><span class="toggle-slider"></span></label>
+    </div>
+    <div class="toggle-row">
+      <div><div class="toggle-label">Alerte dépassement budget</div><div class="toggle-desc">Envoi si les dépenses dépassent le budget alloué</div></div>
+      <label class="toggle"><input type="checkbox" id="toggle-budget"><span class="toggle-slider"></span></label>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn-primary" onclick="saveParams()">Enregistrer les paramètres</button>
+    </div>
+  </div>
+
+  <!-- TEST -->
+  <div class="card">
+    <div class="card-title">Tester l'envoi</div>
+    <div class="card-sub">Envoie un message de test sur tous les numéros configurés</div>
+    <button class="btn-wa" id="btn-test" onclick="sendTest()">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 2C5.58 2 2 5.58 2 10c0 1.5.4 2.9 1.1 4.1L2 18l3.9-1.1C7.1 17.6 8.5 18 10 18c4.42 0 8-3.58 8-8s-3.58-8-8-8z" fill="white"/><path d="M7.5 6.5c-.2-.5-.4-.5-.6-.5-.2 0-.3 0-.5.1-.2.1-.7.7-.7 1.7s.7 2 .8 2.1c.1.1 1.4 2.2 3.4 3 .5.2.8.3 1.1.2.3-.1.9-.4 1.1-.8.1-.4.1-.7 0-.8-.1-.1-.3-.2-.5-.3-.2-.1-1-.5-1.2-.6-.2-.1-.3-.1-.4.1-.1.2-.5.6-.6.7-.1.1-.2.1-.4 0-.2-.1-.8-.3-1.5-1-.6-.5-1-1.2-1.1-1.4-.1-.2 0-.3.1-.4l.3-.3c.1-.1.1-.2.2-.3.1-.1.1-.2 0-.3z" fill="white"/></svg>
+      Envoyer un message de test
+    </button>
+    <div class="test-result" id="test-result"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL='https://kytoohxfditlhmvzehgj.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5dG9vaHhmZGl0bGhtdnplaGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTk2MzEsImV4cCI6MjA5MDk3NTYzMX0.oMTiAaoYlzY0cryj2pBM9v4si4hHiE0QFSlhiSTRAFA';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+let currentUser=null,currentChantier=null,mesChantiers=[];
+let waConfig=null;
+const WA_KEY='progev_wa_config';
+
+// ── INIT ──────────────────────────────────────────────
+(async()=>{
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+  let{data:profile}=await sb.from('utilisateurs').select('*,organisations(*)').eq('id',session.user.id).single();
+  if(!profile){window.location.href='index.html';return;}
+  currentUser=profile;
+  const initials=(profile.nom||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('user-avatar').textContent=initials;
+  document.getElementById('user-display').textContent=profile.nom||session.user.email;
+  const{data:chantiers}=await sb.from('chantiers').select('*').eq('organisation_id',profile.organisation_id).eq('statut','en_cours').order('created_at',{ascending:false});
+  mesChantiers=chantiers||[];
+  const sel=document.getElementById('chantier-sel');
+  if(mesChantiers.length>0){
+    sel.innerHTML=mesChantiers.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+    currentChantier=mesChantiers[0];
+  }
+  loadConfig();
+})();
+
+async function logout(){await sb.auth.signOut();window.location.href='index.html';}
+
+// ── CONFIG (localStorage pour les credentials sensibles) ──
+function loadConfig(){
+  const saved=localStorage.getItem(WA_KEY);
+  if(saved){
+    waConfig=JSON.parse(saved);
+    if(waConfig.sid)document.getElementById('twilio-sid').value=waConfig.sid;
+    if(waConfig.token)document.getElementById('twilio-token').value=waConfig.token;
+    if(waConfig.from)document.getElementById('twilio-from').value=waConfig.from;
+    if(waConfig.toggles){
+      document.getElementById('toggle-rapport').checked=waConfig.toggles.rapport!==false;
+      document.getElementById('toggle-retard').checked=waConfig.toggles.retard!==false;
+      document.getElementById('toggle-hse').checked=waConfig.toggles.hse!==false;
+      document.getElementById('toggle-budget').checked=waConfig.toggles.budget===true;
+    }
+    renderNumeros();
+  }else{
+    waConfig={sid:'',token:'',from:'',numeros:[],toggles:{rapport:true,retard:true,hse:true,budget:false}};
+  }
+}
+
+function saveCreds(){
+  waConfig.sid=document.getElementById('twilio-sid').value.trim();
+  waConfig.token=document.getElementById('twilio-token').value.trim();
+  waConfig.from=document.getElementById('twilio-from').value.trim();
+  localStorage.setItem(WA_KEY,JSON.stringify(waConfig));
+  showToast('Credentials sauvegardés ✓');
+}
+
+function saveParams(){
+  waConfig.toggles={
+    rapport:document.getElementById('toggle-rapport').checked,
+    retard:document.getElementById('toggle-retard').checked,
+    hse:document.getElementById('toggle-hse').checked,
+    budget:document.getElementById('toggle-budget').checked,
+  };
+  localStorage.setItem(WA_KEY,JSON.stringify(waConfig));
+  showToast('Paramètres sauvegardés ✓');
+}
+
+// ── NUMÉROS ───────────────────────────────────────────
+function renderNumeros(){
+  const list=document.getElementById('numero-list');
+  const nums=waConfig.numeros||[];
+  if(!nums.length){list.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:8px 0;">Aucun numéro configuré</div>';return;}
+  const roleLabels={chef_projet:'Chef de projet',direction:'Direction',chef_chantier:'Chef de chantier',autre:'Autre'};
+  list.innerHTML=nums.map((n,i)=>`
+    <div class="numero-item">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style="flex-shrink:0;"><path d="M10 2C5.58 2 2 5.58 2 10c0 1.5.4 2.9 1.1 4.1L2 18l3.9-1.1C7.1 17.6 8.5 18 10 18c4.42 0 8-3.58 8-8s-3.58-8-8-8z" fill="#25D366"/><path d="M7.5 6.5c-.2-.5-.4-.5-.6-.5-.2 0-.3 0-.5.1-.2.1-.7.7-.7 1.7s.7 2 .8 2.1c.1.1 1.4 2.2 3.4 3 .5.2.8.3 1.1.2.3-.1.9-.4 1.1-.8.1-.4.1-.7 0-.8-.1-.1-.3-.2-.5-.3-.2-.1-1-.5-1.2-.6-.2-.1-.3-.1-.4.1-.1.2-.5.6-.6.7-.1.1-.2.1-.4 0-.2-.1-.8-.3-1.5-1-.6-.5-1-1.2-1.1-1.4-.1-.2 0-.3.1-.4l.3-.3c.1-.1.1-.2.2-.3.1-.1.1-.2 0-.3z" fill="white"/></svg>
+      <span class="numero-tag">${n.numero}</span>
+      <span class="numero-role">${roleLabels[n.role]||n.role}</span>
+      <button class="btn-remove" onclick="removeNumero(${i})">×</button>
+    </div>`).join('');
+}
+
+function addNumero(){
+  const num=document.getElementById('new-numero').value.trim();
+  const role=document.getElementById('new-role').value;
+  if(!num){showToast('Entrez un numéro','error');return;}
+  if(!num.startsWith('+')){{showToast('Format: +212XXXXXXXXX','error');return;}}
+  if(!waConfig.numeros)waConfig.numeros=[];
+  waConfig.numeros.push({numero:num,role});
+  document.getElementById('new-numero').value='';
+  renderNumeros();
+}
+
+function removeNumero(i){
+  waConfig.numeros.splice(i,1);
+  renderNumeros();
+}
+
+function saveNumeros(){
+  localStorage.setItem(WA_KEY,JSON.stringify(waConfig));
+  showToast(`${waConfig.numeros?.length||0} numéro(s) sauvegardé(s) ✓`);
+}
+
+// ── TEST ENVOI ────────────────────────────────────────
+async function sendTest(){
+  const btn=document.getElementById('btn-test');
+  btn.disabled=true;btn.textContent='Envoi en cours...';
+  const nums=(waConfig.numeros||[]).map(n=>n.numero);
+  if(!nums.length){showToast('Ajoutez d\'abord des numéros','error');btn.disabled=false;btn.innerHTML='Envoyer un message de test';return;}
+  if(!waConfig.sid||!waConfig.token||!waConfig.from){showToast('Configurez d\'abord les credentials Twilio','error');btn.disabled=false;btn.innerHTML='Envoyer un message de test';return;}
+
+  try{
+    const r=await fetch('/api/send-whatsapp',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        rapport:'Ceci est un message de test de Progev. Configuration WhatsApp opérationnelle.',
+        chantier:currentChantier?.nom||'Test chantier',
+        date:new Date().toLocaleDateString('fr-MA'),
+        avancement:'—',
+        alertes:[],
+        destinataires:nums,
+        twilio_sid:waConfig.sid,
+        twilio_token:waConfig.token,
+        twilio_from:waConfig.from.startsWith('whatsapp:')?waConfig.from:`whatsapp:${waConfig.from}`
+      })
+    });
+    const data=await r.json();
+    const el=document.getElementById('test-result');
+    if(data.sent>0){
+      el.className='test-result ok';
+      el.textContent=`✓ Message envoyé à ${data.sent} numéro(s). Vérifiez vos WhatsApp.`;
+    }else{
+      el.className='test-result err';
+      el.textContent=`Erreur: ${data.details?.[0]?.error||'Vérifiez vos credentials Twilio'}`;
+    }
+    el.style.display='block';
+  }catch(e){
+    const el=document.getElementById('test-result');
+    el.className='test-result err';
+    el.textContent=`Erreur: ${e.message}`;
+    el.style.display='block';
+  }
+  btn.disabled=false;
+  btn.innerHTML='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 2C5.58 2 2 5.58 2 10c0 1.5.4 2.9 1.1 4.1L2 18l3.9-1.1C7.1 17.6 8.5 18 10 18c4.42 0 8-3.58 8-8s-3.58-8-8-8z" fill="white"/></svg> Envoyer un message de test';
+}
+
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+</script>
+</body>
+</html>
