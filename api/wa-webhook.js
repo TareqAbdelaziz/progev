@@ -123,7 +123,7 @@ module.exports = async function handler(req, res) {
       confirmMsg += `\n✅ Aucune alerte`;
     }
 
-    confirmMsg += `\n\n🔗 progev.com/dashboard-direction.html`;
+    confirmMsg += `\n\n🔗 https://www.progev.com/dashboard-direction.html`;
 
     await sendWhatsApp(senderNum, confirmMsg);
 
