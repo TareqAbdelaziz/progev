@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progev — Journal de chantier</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --cream:#faf9f6;--cream2:#f3f0eb;--cream3:#ede9e2;
+  --ink:#1a1a14;--ink2:#4a4a40;--ink3:#9a9a8e;
+  --border:#e2ddd6;--border2:#ccc9c0;
+  --accent:#b45309;--accent-light:#fef3c7;
+  --white:#ffffff;
+  --green:#166534;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+  --red:#991b1b;--red-bg:#fef2f2;--red-border:#fca5a5;
+  --amber:#92400e;--amber-bg:#fffbeb;--amber-border:#fcd34d;
+  --blue:#1e40af;--blue-bg:#eff6ff;--blue-border:#bfdbfe;
+  --wa:#25D366;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 40px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-left{display:flex;align-items:center;gap:28px;}
+.logo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);text-decoration:none;}
+.logo span{color:var(--accent);}
+.topbar-nav{display:flex;}
+.nav-item{padding:0 16px;height:58px;display:flex;align-items:center;font-size:13px;color:var(--ink3);text-decoration:none;border-bottom:2px solid transparent;transition:all 0.15s;}
+.nav-item:hover{color:var(--ink);}
+.nav-item.active{color:var(--accent);border-bottom-color:var(--accent);}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--cream2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;}
+.user-avatar{width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--white);font-size:10px;font-weight:600;display:grid;place-items:center;}
+.user-name{font-size:12px;}
+.btn-logout{font-size:12px;color:var(--ink3);background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.chantier-sel{background:var(--cream2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);outline:none;max-width:220px;}
+
+.content{max-width:1100px;margin:0 auto;padding:32px 40px 80px;}
+.page-eyebrow{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px;}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;color:var(--ink);letter-spacing:-0.5px;margin-bottom:4px;}
+.page-title em{color:var(--accent);font-style:italic;}
+
+/* DATE NAV */
+.date-nav{display:flex;align-items:center;gap:12px;margin-bottom:24px;margin-top:20px;}
+.date-nav button{background:var(--cream2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all 0.15s;}
+.date-nav button:hover{border-color:var(--accent);color:var(--accent);}
+.date-display{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ink);flex:1;text-align:center;}
+.date-input{border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;background:var(--white);}
+.date-input:focus{border-color:var(--accent);}
+
+/* STATUS BADGE */
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-brouillon{background:var(--cream3);color:var(--ink3);}
+.badge-valide{background:var(--green-bg);color:var(--green);}
+.badge-rapport_genere{background:var(--blue-bg);color:var(--blue);}
+
+/* LAYOUT */
+.journal-grid{display:grid;grid-template-columns:1fr 380px;gap:20px;}
+
+/* MESSAGES FEED */
+.messages-card{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.card-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;}
+.card-sub{font-size:11px;color:var(--ink3);margin-top:2px;}
+.messages-list{padding:16px;display:flex;flex-direction:column;gap:10px;max-height:500px;overflow-y:auto;}
+.message-bubble{background:var(--cream);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+.message-bubble.vocal{border-left:3px solid var(--wa);}
+.message-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.message-heure{font-family:'DM Mono',monospace;font-size:11px;color:var(--ink3);}
+.message-type{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;}
+.type-texte{background:var(--blue-bg);color:var(--blue);}
+.type-vocal{background:var(--green-bg);color:var(--green);}
+.type-manuel{background:var(--amber-bg);color:var(--amber);}
+.message-expediteur{font-size:11px;color:var(--ink3);font-family:'DM Mono',monospace;}
+.message-texte{font-size:13px;color:var(--ink2);line-height:1.5;}
+.message-transcription{font-size:11px;color:var(--ink3);margin-top:5px;font-style:italic;padding-top:5px;border-top:1px dashed var(--border);}
+.no-messages{text-align:center;padding:40px 20px;color:var(--ink3);}
+.no-messages-icon{font-size:32px;margin-bottom:12px;}
+.no-messages p{font-size:14px;}
+
+/* SYNTHÈSE PANEL */
+.synthese-panel{display:flex;flex-direction:column;gap:14px;}
+.synthese-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+.synthese-title{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;margin-bottom:14px;}
+
+/* FORM FIELDS */
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--ink3);margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);outline:none;transition:border-color 0.15s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);background:var(--white);}
+.field textarea{resize:vertical;min-height:70px;}
+.field .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* KPI MINI */
+.kpi-mini-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.kpi-mini{background:var(--cream2);border-radius:8px;padding:10px 12px;}
+.kpi-mini-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);margin-bottom:4px;}
+.kpi-mini-val{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--accent);}
+
+/* ALERTES */
+.alert-item{padding:9px 12px;border-radius:8px;font-size:12px;display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;}
+.alert-item.danger{background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);}
+.alert-item.warn{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber);}
+.alert-item.ok{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
+.alert-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;margin-top:4px;}
+
+/* BOUTONS */
+.btn-primary{background:var(--ink);color:var(--white);border:none;border-radius:10px;padding:12px 20px;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.15s;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-primary:hover{background:var(--accent);}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;}
+.btn-secondary{background:var(--cream2);color:var(--ink2);border:1px solid var(--border);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif;width:100%;}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-validate{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);border-radius:10px;padding:12px 20px;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.15s;width:100%;margin-bottom:8px;}
+.btn-validate:hover{background:var(--green);color:var(--white);}
+
+/* RAPPORT PREVIEW */
+.rapport-preview{background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:14px;max-height:300px;overflow-y:auto;margin-top:12px;font-size:12px;font-family:'DM Mono',monospace;line-height:1.7;white-space:pre-wrap;word-break:break-word;display:none;}
+
+/* SPINNER */
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;right:28px;z-index:999;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:500;border:1px solid;transform:translateY(60px);opacity:0;transition:all 0.3s ease;pointer-events:none;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{background:var(--green-bg);border-color:var(--green-border);color:var(--green);}
+.toast.error{background:var(--red-bg);border-color:var(--red-border);color:var(--red);}
+
+/* EMPTY STATE */
+.empty-state{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:48px;text-align:center;}
+.empty-state h3{font-family:'Cormorant Garamond',serif;font-size:24px;margin-bottom:8px;}
+.empty-state p{font-size:13px;color:var(--ink3);margin-bottom:20px;}
+
+@media(max-width:900px){.journal-grid{grid-template-columns:1fr;}.topbar-nav{display:none;}.content{padding:20px 16px;}}
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-left">
+    <a href="dashboard-direction.html" class="logo">Pro<span>gev</span></a>
+    <div class="topbar-nav">
+      <a href="dashboard-direction.html" class="nav-item">Dashboard</a>
+      <a href="chantier-rapport-ia.html" class="nav-item">Rapport</a>
+      <a href="journal.html" class="nav-item active">Journal</a>
+      <a href="budget.html" class="nav-item">Budget</a>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <select id="chantier-sel" class="chantier-sel"></select>
+    <div class="user-chip">
+      <div class="user-avatar" id="user-avatar">—</div>
+      <span class="user-name" id="user-display">—</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">Déconnexion</button>
+  </div>
+</nav>
+
+<div class="content">
+  <div class="page-eyebrow">Communication terrain</div>
+  <div class="page-title">Journal de <em>chantier</em></div>
+
+  <!-- DATE NAVIGATION -->
+  <div class="date-nav">
+    <button onclick="changeDate(-1)">← Jour précédent</button>
+    <div class="date-display" id="date-display">—</div>
+    <input type="date" id="date-picker" class="date-input" onchange="loadJournal(this.value)">
+    <button onclick="changeDate(1)">Jour suivant →</button>
+    <button onclick="loadJournal(today())" style="background:var(--accent-light);border-color:var(--accent);color:var(--accent);">Aujourd'hui</button>
+  </div>
+
+  <!-- CONTENU PRINCIPAL -->
+  <div id="main-content">
+    <!-- rempli dynamiquement -->
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL='https://kytoohxfditlhmvzehgj.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5dG9vaHhmZGl0bGhtdnplaGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTk2MzEsImV4cCI6MjA5MDk3NTYzMX0.oMTiAaoYlzY0cryj2pBM9v4si4hHiE0QFSlhiSTRAFA';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+let currentUser=null,currentChantier=null,mesChantiers=[];
+let currentDate=today();
+let currentJournal=null;
+
+function today(){return new Date().toISOString().split('T')[0];}
+
+function formatDateFr(d){
+  const dt=new Date(d+'T12:00:00');
+  return dt.toLocaleDateString('fr-MA',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+
+// ── INIT ──────────────────────────────────────────────
+(async()=>{
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+  let{data:profile}=await sb.from('utilisateurs').select('*,organisations(*)').eq('id',session.user.id).single();
+  if(!profile){window.location.href='index.html';return;}
+  currentUser=profile;
+  const initials=(profile.nom||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('user-avatar').textContent=initials;
+  document.getElementById('user-display').textContent=profile.nom||session.user.email;
+  const{data:chantiers}=await sb.from('chantiers').select('*').eq('organisation_id',profile.organisation_id).eq('statut','en_cours').order('created_at',{ascending:false});
+  mesChantiers=chantiers||[];
+  const sel=document.getElementById('chantier-sel');
+  if(mesChantiers.length>0){
+    sel.innerHTML=mesChantiers.map(c=>`<option value="${c.id}">${c.nom}</option>`).join('');
+    currentChantier=mesChantiers[0];
+    sel.addEventListener('change',()=>{
+      currentChantier=mesChantiers.find(c=>c.id===sel.value);
+      loadJournal(currentDate);
+    });
+  }
+  document.getElementById('date-picker').value=currentDate;
+  await loadJournal(currentDate);
+})();
+
+async function logout(){await sb.auth.signOut();window.location.href='index.html';}
+
+// ── NAVIGATION DATE ────────────────────────────────────
+function changeDate(delta){
+  const d=new Date(currentDate+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  const newDate=d.toISOString().split('T')[0];
+  document.getElementById('date-picker').value=newDate;
+  loadJournal(newDate);
+}
+
+// ── CHARGER LE JOURNAL ─────────────────────────────────
+async function loadJournal(date){
+  currentDate=date;
+  document.getElementById('date-display').textContent=formatDateFr(date);
+  if(!currentChantier){return;}
+
+  const{data}=await sb.from('journal_chantier')
+    .select('*').eq('chantier_id',currentChantier.id).eq('date_journal',date).single();
+
+  currentJournal=data||null;
+  renderPage();
+}
+
+// ── RENDER ─────────────────────────────────────────────
+function renderPage(){
+  const container=document.getElementById('main-content');
+
+  if(!currentJournal || !(currentJournal.messages?.length)){
+    container.innerHTML=`
+      <div class="empty-state">
+        <div style="font-size:48px;margin-bottom:16px;">📱</div>
+        <h3>Aucun message pour cette journée</h3>
+        <p>Les chefs de chantier peuvent envoyer leurs messages WhatsApp au numéro Progev.<br>Ils apparaîtront ici automatiquement.</p>
+        <button class="btn-secondary" style="width:auto;display:inline-block;margin-top:4px;" onclick="openAddMessage()">+ Ajouter un message manuellement</button>
+      </div>
+      <div id="add-message-form" style="display:none;margin-top:16px;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;margin-bottom:14px;">Ajouter un message manuellement</div>
+        <div class="field"><label>Message du terrain</label><textarea id="manual-msg" placeholder="Ex: 8 pylônes posés, 22 ouvriers, météo nuageux, aucun incident HSE" style="min-height:80px;"></textarea></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-primary" style="flex:1;" onclick="addManualMessage()">Enregistrer</button>
+          <button class="btn-secondary" style="flex:1;width:auto;" onclick="document.getElementById('add-message-form').style.display='none'">Annuler</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const j=currentJournal;
+  const msgs=j.messages||[];
+  const statut=j.statut||'brouillon';
+  const alertes=[];
+  if(j.hse_incident)alertes.push({type:'danger',txt:'Incident HSE signalé'});
+  if(j.livraisons_attente)alertes.push({type:'warn',txt:`En attente: ${j.livraisons_attente}`});
+  if(j.problemes)alertes.push({type:'warn',txt:`Problème: ${j.problemes}`});
+  if(!j.hse_incident&&!j.problemes)alertes.push({type:'ok',txt:'Journée sans incident signalé'});
+
+  container.innerHTML=`
+    <div class="journal-grid">
+
+      <!-- MESSAGES -->
+      <div>
+        <div class="messages-card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Messages terrain</div>
+              <div class="card-sub">${msgs.length} message(s) reçu(s) · <span class="status-badge badge-${statut}">${statut==='brouillon'?'En cours':statut==='valide'?'Validé':'Rapport généré'}</span></div>
+            </div>
+            <button class="btn-secondary" style="width:auto;" onclick="openAddMessage()">+ Ajouter</button>
+          </div>
+          <div class="messages-list" id="messages-list">
+            ${msgs.map(m=>`
+              <div class="message-bubble ${m.source==='vocal'?'vocal':''}">
+                <div class="message-meta">
+                  <span class="message-heure">${m.heure||'—'}</span>
+                  <span class="message-type type-${m.source||'texte'}">${m.source==='vocal'?'🎙 Vocal':m.source==='manuel'?'✏️ Manuel':'💬 WhatsApp'}</span>
+                  <span class="message-expediteur">${m.expediteur||''}</span>
+                </div>
+                <div class="message-texte">${m.texte||''}</div>
+                ${m.transcription?`<div class="message-transcription">Transcription: "${m.transcription}"</div>`:''}
+              </div>`).join('')}
+          </div>
+        </div>
+        <div id="add-message-form" style="display:none;margin-top:14px;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;margin-bottom:12px;">Ajouter un message manuellement</div>
+          <div class="field"><textarea id="manual-msg" placeholder="Ex: 8 pylônes posés, 22 ouvriers, météo nuageux, aucun incident HSE" style="min-height:80px;"></textarea></div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-primary" style="flex:1;" onclick="addManualMessage()">Enregistrer</button>
+            <button class="btn-secondary" style="flex:1;width:auto;" onclick="document.getElementById('add-message-form').style.display='none'">Annuler</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SYNTHÈSE -->
+      <div class="synthese-panel">
+
+        <!-- KPIs -->
+        <div class="synthese-card">
+          <div class="synthese-title">Données du jour</div>
+          <div class="kpi-mini-row">
+            <div class="kpi-mini"><div class="kpi-mini-label">Effectif</div><div class="kpi-mini-val" id="s-effectif">${j.effectif||'—'}</div></div>
+            <div class="kpi-mini"><div class="kpi-mini-label">Engins</div><div class="kpi-mini-val" id="s-engins">${j.engins||'—'}</div></div>
+          </div>
+          <div class="field"><label>Travaux réalisés</label><textarea id="s-travaux" rows="3">${j.travaux_realises||''}</textarea></div>
+          <div class="field"><label>Météo</label><input type="text" id="s-meteo" value="${j.meteo||''}"></div>
+          <div class="field"><label>HSE</label><input type="text" id="s-hse" value="${j.hse_evenements||'Aucun incident'}"></div>
+          <div class="field"><label>Problèmes / blocages</label><textarea id="s-problemes" rows="2">${j.problemes||''}</textarea></div>
+          <div class="field"><label>Livraisons en attente</label><input type="text" id="s-livraisons" value="${j.livraisons_attente||''}"></div>
+          <div class="field"><label>Décisions prises</label><textarea id="s-decisions" rows="2">${j.decisions||''}</textarea></div>
+          <button class="btn-secondary" onclick="saveJournal()">💾 Enregistrer les modifications</button>
+        </div>
+
+        <!-- ALERTES -->
+        ${alertes.length?`<div class="synthese-card">
+          <div class="synthese-title">Alertes</div>
+          ${alertes.map(a=>`<div class="alert-item ${a.type}"><span class="alert-dot"></span>${a.txt}</div>`).join('')}
+        </div>`:''}
+
+        <!-- ACTIONS CDP -->
+        <div class="synthese-card">
+          <div class="synthese-title">Actions chef de projet</div>
+          ${statut==='rapport_genere'
+            ? `<div class="alert-item ok"><span class="alert-dot"></span>Rapport officiel déjà généré pour cette journée</div>
+               <button class="btn-secondary" style="margin-top:10px;" onclick="voirRapport()">Voir le rapport</button>`
+            : `<button class="btn-validate" onclick="validerEtGenerer()" id="btn-generer">
+                <span id="btn-txt">Valider & Générer le rapport officiel</span>
+                <div class="spinner" id="btn-spinner" style="display:none;border-color:rgba(22,101,52,0.3);border-top-color:#166534;"></div>
+               </button>
+               <button class="btn-secondary" onclick="saveJournal()">Enregistrer sans générer</button>
+               <div id="rapport-preview" class="rapport-preview"></div>`
+          }
+        </div>
+
+      </div>
+    </div>`;
+}
+
+// ── AJOUTER MESSAGE MANUEL ─────────────────────────────
+function openAddMessage(){
+  const form=document.getElementById('add-message-form');
+  if(form)form.style.display=form.style.display==='none'?'block':'none';
+}
+
+async function addManualMessage(){
+  const texte=document.getElementById('manual-msg')?.value?.trim();
+  if(!texte){showToast('Entrez un message','error');return;}
+
+  const heure=new Date().toLocaleTimeString('fr-MA',{hour:'2-digit',minute:'2-digit'});
+  const nouveauMsg={heure,texte,source:'manuel',expediteur:currentUser?.nom||'Chef de projet'};
+
+  if(!currentJournal){
+    // Créer le journal
+    const{data}=await sb.from('journal_chantier').insert({
+      chantier_id:currentChantier.id,date_journal:currentDate,
+      cree_par:currentUser.id,messages:[nouveauMsg],statut:'brouillon'
+    }).select().single();
+    currentJournal=data;
+  }else{
+    const msgs=[...(currentJournal.messages||[]),nouveauMsg];
+    await sb.from('journal_chantier').update({messages:msgs,updated_at:new Date().toISOString()}).eq('id',currentJournal.id);
+    currentJournal.messages=msgs;
+  }
+
+  showToast('Message ajouté ✓');
+  await loadJournal(currentDate);
+}
+
+// ── SAUVEGARDER LE JOURNAL ─────────────────────────────
+async function saveJournal(){
+  if(!currentJournal){showToast('Aucun journal à sauvegarder','error');return;}
+  const updates={
+    travaux_realises: document.getElementById('s-travaux')?.value||'',
+    effectif:         parseInt(document.getElementById('s-effectif')?.textContent)||null,
+    meteo:            document.getElementById('s-meteo')?.value||'',
+    hse_evenements:   document.getElementById('s-hse')?.value||'',
+    problemes:        document.getElementById('s-problemes')?.value||'',
+    livraisons_attente:document.getElementById('s-livraisons')?.value||'',
+    decisions:        document.getElementById('s-decisions')?.value||'',
+    updated_at:       new Date().toISOString(),
+  };
+  const{error}=await sb.from('journal_chantier').update(updates).eq('id',currentJournal.id);
+  if(error){showToast('Erreur sauvegarde','error');return;}
+  Object.assign(currentJournal,updates);
+  showToast('Journal sauvegardé ✓');
+}
+
+// ── VALIDER ET GÉNÉRER ─────────────────────────────────
+async function validerEtGenerer(){
+  const btn=document.getElementById('btn-generer');
+  const txt=document.getElementById('btn-txt');
+  const spin=document.getElementById('btn-spinner');
+  btn.disabled=true;txt.style.display='none';spin.style.display='block';
+
+  // Sauvegarder d'abord
+  await saveJournal();
+
+  const j=currentJournal;
+  const data={
+    nom_chantier: currentChantier.nom,
+    date:         j.date_journal,
+    chef_projet:  currentUser.nom||'Chef de projet',
+    chef_chantier:'—',
+    avancement_reel: j.avancement_calcule||j.avancement_manuel||'Non précisé',
+    avancement_prevu:'—',
+    effectif:     j.effectif||0,
+    engins:       j.engins||0,
+    meteo:        j.meteo||'Non précisé',
+    travaux_realises: j.travaux_realises||'Non précisé',
+    travaux_prevus:'À définir',
+    livraisons_recues:'—',
+    livraisons_attente: j.livraisons_attente||'Aucune',
+    hse_evenements: j.hse_evenements||'Aucun incident',
+    hse_details:  '—',
+    qualite:      '—',
+    problemes:    j.problemes||'Aucun blocage',
+    decisions:    j.decisions||'—',
+    risques:      j.risques||'—',
+  };
+
+  const prompt=`Tu es un assistant expert en gestion de chantiers électriques HTB (60kV).
+Génère un rapport journalier officiel et professionnel.
+Chantier: ${data.nom_chantier} · Date: ${data.date}
+Avancement: ${data.avancement_reel}% · Effectif: ${data.effectif} · Engins: ${data.engins} · Météo: ${data.meteo}
+Travaux: ${data.travaux_realises}
+HSE: ${data.hse_evenements}
+Livraisons en attente: ${data.livraisons_attente}
+Problèmes: ${data.problemes}
+Décisions: ${data.decisions}
+Rédige en 8 sections: 1.EN-TÊTE 2.RÉSUMÉ EXÉCUTIF 3.AVANCEMENT 4.ACTIVITÉS 5.HSE 6.APPROVISIONNEMENT 7.PROBLÈMES & ACTIONS 8.PRÉVISIONS J+1. Ton professionnel, termes HT, alertes ⚠️.`;
+
+  try{
+    const resp=await fetch('/api/generate-report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+    const result=await resp.json();
+    const texteRapport=result.text||'Erreur génération';
+
+    // Sauvegarder le rapport
+    const{data:rapportSave}=await sb.from('rapports').upsert({
+      chantier_id:      currentChantier.id,
+      auteur_id:        currentUser.id,
+      date_rapport:     j.date_journal,
+      avancement_reel:  j.avancement_calcule||j.avancement_manuel||null,
+      effectif:         j.effectif||0,
+      engins:           j.engins||0,
+      meteo:            j.meteo||'',
+      travaux_realises: j.travaux_realises||'',
+      hse_evenements:   j.hse_evenements||'',
+      hse_incident:     j.hse_incident||false,
+      livraisons_attente:j.livraisons_attente||'',
+      problemes:        j.problemes||'',
+      decisions:        j.decisions||'',
+      risques:          j.risques||'',
+      texte_rapport:    texteRapport,
+    },{onConflict:'chantier_id,date_rapport'}).select().single();
+
+    // Marquer le journal comme rapport généré
+    await sb.from('journal_chantier').update({
+      statut:'rapport_genere',
+      rapport_id: rapportSave?.id||null,
+      valide_par: currentUser.id,
+      valide_a:   new Date().toISOString(),
+    }).eq('id',j.id);
+
+    // Afficher preview
+    const preview=document.getElementById('rapport-preview');
+    if(preview){preview.textContent=texteRapport;preview.style.display='block';}
+
+    showToast('Rapport officiel généré et sauvegardé ✓');
+    await loadJournal(currentDate);
+
+  }catch(e){
+    showToast(`Erreur: ${e.message}`,'error');
+    btn.disabled=false;txt.style.display='block';spin.style.display='none';
+  }
+}
+
+async function voirRapport(){
+  if(!currentJournal?.rapport_id)return;
+  const{data}=await sb.from('rapports').select('texte_rapport,date_rapport').eq('id',currentJournal.rapport_id).single();
+  if(!data)return;
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rapport ${data.date_rapport}</title>
+  <style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:0 24px;font-size:12px;line-height:1.7}
+  h1{font-size:20px;border-bottom:2px solid #b45309;padding-bottom:8px;color:#1a1a14;margin-bottom:16px}
+  pre{white-space:pre-wrap;font-family:'Courier New',monospace;font-size:11px}</style></head>
+  <body><h1>Rapport journalier — ${data.date_rapport}</h1><pre>${data.texte_rapport}</pre></body></html>`);
+  win.document.close();
+}
+
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+</script>
+</body>
+</html>
